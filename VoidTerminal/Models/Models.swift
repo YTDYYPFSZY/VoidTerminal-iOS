@@ -84,8 +84,10 @@ struct ChatGroup: Codable, Identifiable, Hashable {
     var members: [String]
     var avatar: String?
     let createdAt: Int?
-
     var isOwner: Bool = false
+    enum CodingKeys: String, CodingKey {
+        case id, name, owner, members, avatar, createdAt
+    }
 }
 
 // MARK: - Friend Request

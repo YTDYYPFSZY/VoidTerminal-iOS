@@ -19,13 +19,13 @@ extension UIColor {
 
 // MARK: - Dynamic Colors (auto light/dark)
 extension Color {
-    static let vtBG = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBG : UIColor(hex: "f4f6f9") })
-    static let vtPanel = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtPanel : UIColor(hex: "ffffff") })
-    static let vtPanel2 = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtPanel2 : UIColor(hex: "edf1f6") })
-    static let vtBorder = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBorder : UIColor(hex: "dfe4ec") })
-    static let vtText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtText : UIColor(hex: "1f2430") })
-    static let vtTextDim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtTextDim : UIColor(hex: "6b7280") })
-    static let vtBubbleOther = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBorder : UIColor(hex: "e8edf4") })
+    static let vtBG = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "0f1117") : UIColor(hex: "f4f6f9") })
+    static let vtPanel = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "161a22") : UIColor(hex: "ffffff") })
+    static let vtPanel2 = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "1c212b") : UIColor(hex: "edf1f6") })
+    static let vtBorder = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "262c38") : UIColor(hex: "dfe4ec") })
+    static let vtText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "e6e9ef") : UIColor(hex: "1f2430") })
+    static let vtTextDim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "8a91a0") : UIColor(hex: "6b7280") })
+    static let vtBubbleOther = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "262c38") : UIColor(hex: "e8edf4") })
 }
 
 // MARK: - App Theme Colors

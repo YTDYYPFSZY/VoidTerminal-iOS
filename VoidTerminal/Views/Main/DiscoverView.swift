@@ -36,13 +36,12 @@ struct DiscoverView: View {
             }
             .navigationBarHidden(true)
             .alert("警告", isPresented: $showTomatoWarning) {
-                Button("我确认") {
-                    // 打开番茄小说网站
+                Button("我确认", role: .destructive) {
                     if let url = URL(string: "http://Morax.kdns.fr") {
                         UIApplication.shared.open(url)
                     }
                 }
-                Button("取消", role: .cancel) {}
+                Button("取消", role: .cancel) { }
             } message: {
                 Text("您将进入本站的同级网站，此站专注于看番茄小说和下载小说文件。账号密码并不同步，当您第一次进入时，请务必重新注册一个新账号。")
             }

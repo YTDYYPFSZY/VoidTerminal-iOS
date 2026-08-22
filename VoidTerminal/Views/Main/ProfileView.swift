@@ -16,7 +16,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "0f1117").ignoresSafeArea()
+                Color.vtBG.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -72,9 +72,9 @@ struct ProfileView: View {
                             Spacer()
                         }
                         .padding(20)
-                        .background(Color(hex: "161a22"))
+                        .background(Color.vtPanel)
                         .cornerRadius(14)
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "262c38"), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.vtBorder, lineWidth: 1))
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
 
@@ -104,9 +104,9 @@ struct ProfileView: View {
                                     .foregroundColor(Color(hex: "e5484d"))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
-                                    .background(Color(hex: "161a22"))
+                                    .background(Color.vtPanel)
                                     .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "262c38"), lineWidth: 1))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vtBorder, lineWidth: 1))
                             }
                         }
                         .padding(.horizontal, 16)
@@ -146,14 +146,14 @@ struct ProfileView: View {
                     .foregroundColor(isAdmin ? .white : .white)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(Color(hex: "8a91a0"))
+                    .foregroundColor(Color.vtTextDim)
                     .font(.system(size: 12))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(isAdmin ? LinearGradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")], startPoint: .leading, endPoint: .trailing) : LinearGradient(colors: [Color(hex: "161a22")], startPoint: .leading, endPoint: .trailing))
+            .background(isAdmin ? LinearGradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")], startPoint: .leading, endPoint: .trailing) : LinearGradient(colors: [Color.vtPanel], startPoint: .leading, endPoint: .trailing))
             .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isAdmin ? Color.clear : Color(hex: "262c38"), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isAdmin ? Color.clear : Color.vtBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

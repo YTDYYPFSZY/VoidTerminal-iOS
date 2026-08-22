@@ -17,7 +17,7 @@ struct AuthView: View {
     var body: some View {
         ZStack {
             // 渐变背景
-            Color(hex: "0f1117").ignoresSafeArea()
+            Color.vtBG.ignoresSafeArea()
             RadialGradient(colors: [Color(hex: "07c160").opacity(0.08), .clear],
                            center: .topLeading, startRadius: 0, endRadius: 400)
                 .ignoresSafeArea()
@@ -35,7 +35,7 @@ struct AuthView: View {
                         .tracking(2)
                     Text("简约 · 轻量 · 随时聊天")
                         .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "8a91a0"))
+                        .foregroundColor(Color.vtTextDim)
                 }
                 .padding(.bottom, 28)
 
@@ -53,7 +53,7 @@ struct AuthView: View {
                         }
                     }
                     .overlay(
-                        Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")),
+                        Rectangle().frame(height: 1).foregroundColor(Color.vtBorder),
                         alignment: .bottom
                     )
 
@@ -64,17 +64,17 @@ struct AuthView: View {
                     }
                 }
                 .padding(24)
-                .background(Color(hex: "161a22"))
+                .background(Color.vtPanel)
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color(hex: "262c38"), lineWidth: 1)
+                        .stroke(Color.vtBorder, lineWidth: 1)
                 )
                 .padding(.horizontal, 20)
 
                 Text("无需手机号与实名，注册即可开聊")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "8a91a0"))
+                    .foregroundColor(Color.vtTextDim)
                     .padding(.top, 18)
 
                 Spacer()
@@ -85,7 +85,7 @@ struct AuthView: View {
                 } label: {
                     Text("服务器设置")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "8a91a0"))
+                        .foregroundColor(Color.vtTextDim)
                 }
                 .padding(.bottom, 20)
             }
@@ -99,7 +99,7 @@ struct AuthView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 15, weight: isActive ? .semibold : .regular))
-                .foregroundColor(isActive ? Color(hex: "07c160") : Color(hex: "8a91a0"))
+                .foregroundColor(isActive ? Color(hex: "07c160") : Color.vtTextDim)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .overlay(
@@ -142,7 +142,7 @@ struct AuthView: View {
 
             Text("本站不支持找回密码，请妥善保管自己的密码。")
                 .font(.system(size: 12))
-                .foregroundColor(Color(hex: "8a91a0"))
+                .foregroundColor(Color.vtTextDim)
                 .multilineTextAlignment(.center)
         }
     }

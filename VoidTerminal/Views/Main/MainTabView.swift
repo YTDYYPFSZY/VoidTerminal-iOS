@@ -46,7 +46,7 @@ struct MainTabView: View {
                     .zIndex(1)
             }
         }
-        .background(Color(hex: "0f1117").ignoresSafeArea())
+        .background(Color.vtBG.ignoresSafeArea())
         .onAppear {
             // 确保进入主界面后建立WebSocket连接（此时ChatViewModel回调已就绪）
             if let token = appState.token {

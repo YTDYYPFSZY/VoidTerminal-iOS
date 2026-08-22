@@ -10,7 +10,7 @@ struct MessagesView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "0f1117").ignoresSafeArea()
+                Color.vtBG.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // 标题
@@ -27,14 +27,14 @@ struct MessagesView: View {
                     // 搜索
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                         TextField("搜索会话", text: $searchText)
                             .foregroundColor(.white)
                             .autocapitalization(.none)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
-                    .background(Color(hex: "161a22"))
+                    .background(Color.vtPanel)
                     .cornerRadius(8)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
@@ -156,7 +156,7 @@ struct MessagesView: View {
         HStack {
             Text(text)
                 .font(.system(size: 12))
-                .foregroundColor(Color(hex: "8a91a0"))
+                .foregroundColor(Color.vtTextDim)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -190,7 +190,7 @@ struct MessagesView: View {
                     }
                     Text(preview)
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "8a91a0"))
+                        .foregroundColor(Color.vtTextDim)
                         .lineLimit(1)
                 }
                 Spacer()

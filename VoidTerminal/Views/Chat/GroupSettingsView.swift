@@ -33,7 +33,7 @@ struct GroupSettingsView: View {
                                 .foregroundColor(.white)
                             Text("\(group.members.count) 人")
                                 .font(.system(size: 13))
-                                .foregroundColor(Color(hex: "8a91a0"))
+                                .foregroundColor(Color.vtTextDim)
                         }
                         Spacer()
                     }

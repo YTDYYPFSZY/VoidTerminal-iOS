@@ -1,14 +1,42 @@
 import SwiftUI
 
+// MARK: - UIColor hex extension
+extension UIColor {
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default: (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(red: CGFloat(r) / 255, green: CGFloat(g) / 255, blue: CGFloat(b) / 255, alpha: CGFloat(a) / 255)
+    }
+}
+
+// MARK: - Dynamic Colors (auto light/dark)
+extension Color {
+    static let vtBG = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBG : UIColor(hex: "f4f6f9") })
+    static let vtPanel = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtPanel : UIColor(hex: "ffffff") })
+    static let vtPanel2 = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtPanel2 : UIColor(hex: "edf1f6") })
+    static let vtBorder = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBorder : UIColor(hex: "dfe4ec") })
+    static let vtText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtText : UIColor(hex: "1f2430") })
+    static let vtTextDim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtTextDim : UIColor(hex: "6b7280") })
+    static let vtBubbleOther = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor.vtBorder : UIColor(hex: "e8edf4") })
+}
+
 // MARK: - App Theme Colors
 struct AppTheme {
     // Dark theme (default)
-    static let darkBG = Color(hex: "0f1117")
-    static let darkPanel = Color(hex: "161a22")
-    static let darkPanel2 = Color(hex: "1c212b")
-    static let darkBorder = Color(hex: "262c38")
-    static let darkText = Color(hex: "e6e9ef")
-    static let darkTextDim = Color(hex: "8a91a0")
+    static let darkBG = Color.vtBG
+    static let darkPanel = Color.vtPanel
+    static let darkPanel2 = Color.vtPanel2
+    static let darkBorder = Color.vtBorder
+    static let darkText = Color.vtText
+    static let darkTextDim = Color.vtTextDim
 
     // Light theme
     static let lightBG = Color(hex: "f4f6f9")
@@ -22,7 +50,7 @@ struct AppTheme {
     static let accent = Color(hex: "07c160")
     static let accentDim = Color(hex: "059749")
     static let danger = Color(hex: "e5484d")
-    static let bubbleOther = Color(hex: "262c38")
+    static let bubbleOther = Color.vtBorder
     static let bubbleOtherLight = Color(hex: "e8edf4")
 }
 

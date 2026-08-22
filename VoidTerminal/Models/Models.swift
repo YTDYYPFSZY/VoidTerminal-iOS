@@ -91,6 +91,16 @@ struct MomentResponse: Codable {
     let moment: Moment
 }
 
+struct AvatarResponse: Codable {
+    let ok: Bool
+    let avatar: String
+}
+
+struct ImageUploadResponse: Codable {
+    let ok: Bool
+    let url: String
+}
+
 // MARK: - DM Room
 struct DMRoom: Codable, Hashable {
     let peerId: String

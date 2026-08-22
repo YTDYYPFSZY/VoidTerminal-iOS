@@ -42,13 +42,13 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: - Connection
     func connect(token: String) {
+        if task != nil { disconnect() }
         self.token = token
         guard let url = URL(string: ServerConfig.shared.wsURL) else { return }
         task = session.webSocketTask(with: url)
         task?.resume()
         isConnected = true
         receive()
-        // 发送认证
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.sendAuth()
         }

@@ -59,21 +59,21 @@ final class APIService {
     // MARK: - Avatar
     func uploadAvatar(token: String, imageData: Data) async throws -> String {
         let b64 = imageData.base64EncodedString()
-        let resp: [String: String] = try await post("/api/avatar", body: ["token": token, "data": b64])
-        return resp["avatar"] ?? ""
+        let resp: AvatarResponse = try await post("/api/avatar", body: ["token": token, "data": b64])
+        return resp.avatar
     }
 
     func uploadGroupAvatar(token: String, gid: String, imageData: Data) async throws -> String {
         let b64 = imageData.base64EncodedString()
-        let resp: [String: String] = try await post("/api/group-avatar", body: ["token": token, "gid": gid, "data": b64])
-        return resp["avatar"] ?? ""
+        let resp: AvatarResponse = try await post("/api/group-avatar", body: ["token": token, "gid": gid, "data": b64])
+        return resp.avatar
     }
 
     // MARK: - Message Image
     func uploadMessageImage(token: String, imageData: Data) async throws -> String {
         let b64 = imageData.base64EncodedString()
-        let resp: [String: String] = try await post("/api/upload-msg-image", body: ["token": token, "data": b64])
-        return resp["url"] ?? ""
+        let resp: ImageUploadResponse = try await post("/api/upload-msg-image", body: ["token": token, "data": b64])
+        return resp.url
     }
 
     // MARK: - Moment

@@ -35,8 +35,8 @@ struct MomentsView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 12)
-            .background(Color(hex: "161a22"))
-            .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")), alignment: .bottom)
+            .background(Color.vtPanel)
+            .overlay(Rectangle().frame(height: 1).foregroundColor(Color.vtBorder), alignment: .bottom)
 
             // 朋友圈列表
             ScrollView {
@@ -45,10 +45,10 @@ struct MomentsView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "camera.on.rectangle")
                                 .font(.system(size: 40))
-                                .foregroundColor(Color(hex: "8a91a0"))
+                                .foregroundColor(Color.vtTextDim)
                             Text("还没有朋友圈内容")
                                 .font(.system(size: 14))
-                                .foregroundColor(Color(hex: "8a91a0"))
+                                .foregroundColor(Color.vtTextDim)
                         }
                         .padding(.top, 60)
                     } else {
@@ -62,7 +62,7 @@ struct MomentsView: View {
                 .padding(.bottom, 20)
             }
         }
-        .background(Color(hex: "0f1117").ignoresSafeArea())
+        .background(Color.vtBG.ignoresSafeArea())
         .sheet(isPresented: $showPostMoment) {
             PostMomentView()
                 .environmentObject(chatVM)
@@ -105,7 +105,7 @@ struct MomentsView: View {
                         .foregroundColor(.white)
                     Text(timeAgo(moment.time))
                         .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "8a91a0"))
+                        .foregroundColor(Color.vtTextDim)
                 }
                 Spacer()
             }
@@ -128,10 +128,10 @@ struct MomentsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
-                            .foregroundColor(isLiked ? Color(hex: "07c160") : Color(hex: "8a91a0"))
+                            .foregroundColor(isLiked ? Color(hex: "07c160") : Color.vtTextDim)
                         Text("\(moment.likes.count)")
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                     }
                 }
 
@@ -140,10 +140,10 @@ struct MomentsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "bubble.right")
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                         Text("\(moment.comments.count)")
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                     }
                 }
 
@@ -177,7 +177,7 @@ struct MomentsView: View {
                                 } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10))
-                                        .foregroundColor(Color(hex: "8a91a0"))
+                                        .foregroundColor(Color.vtTextDim)
                                 }
                             }
                         }
@@ -187,7 +187,7 @@ struct MomentsView: View {
             }
         }
         .padding(14)
-        .background(Color(hex: "161a22"))
+        .background(Color.vtPanel)
         .cornerRadius(12)
     }
 

@@ -7,7 +7,7 @@ struct DiscoverView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "0f1117").ignoresSafeArea()
+                Color.vtBG.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     HStack {
@@ -38,7 +38,7 @@ struct DiscoverView: View {
             .alert("警告", isPresented: $showTomatoWarning) {
                 Button("我确认") {
                     // 打开番茄小说网站
-                    if let url = URL(string: "http://buer.kdns.fr") {
+                    if let url = URL(string: "http://Morax.kdns.fr") {
                         UIApplication.shared.open(url)
                     }
                 }
@@ -65,11 +65,11 @@ struct DiscoverView: View {
                     .foregroundColor(.white)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(Color(hex: "8a91a0"))
+                    .foregroundColor(Color.vtTextDim)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(hex: "161a22"))
+            .background(Color.vtPanel)
             .cornerRadius(12)
         }
         .buttonStyle(.plain)

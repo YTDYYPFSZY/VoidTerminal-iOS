@@ -81,7 +81,7 @@ struct ModalView<Content: View>: View {
                 content
             }
             .padding(20)
-            .background(Color(hex: "161a22"))
+            .background(Color.vtPanel)
             .cornerRadius(14)
             .padding(.horizontal, 20)
         }
@@ -124,11 +124,11 @@ struct AppTextField: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
-        .background(Color(hex: "0f1117"))
+        .background(Color.vtBG)
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(hex: "262c38"), lineWidth: 1)
+                .stroke(Color.vtBorder, lineWidth: 1)
         )
         .foregroundColor(.white)
         .autocapitalization(.none)

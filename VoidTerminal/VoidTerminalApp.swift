@@ -56,7 +56,7 @@ final class AppState: ObservableObject {
             await MainActor.run {
                 self.currentUser = me
             }
-            ws.connect(token: token)
+            // WebSocket连接统一在MainTabView.onAppear中建立，避免重复连接
         } catch {
             await MainActor.run { self.token = nil }
         }

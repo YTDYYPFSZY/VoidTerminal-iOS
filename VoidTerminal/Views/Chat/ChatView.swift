@@ -75,7 +75,7 @@ struct ChatView: View {
 
             inputBar
         }
-        .background(Color(hex: "0f1117").ignoresSafeArea())
+        .background(Color.vtBG.ignoresSafeArea())
         .navigationBarHidden(true)
         .sheet(isPresented: $showGroupSettings) {
             if case .group(let gid, _) = room, let group = chatVM.group(by: gid) {
@@ -133,13 +133,13 @@ struct ChatView: View {
 
     private var mentionPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38"))
+            Rectangle().frame(height: 1).foregroundColor(Color.vtBorder)
             ScrollView {
                 LazyVStack(spacing: 0) {
                     if filteredMentionUsers.isEmpty {
                         Text("无匹配用户")
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                             .padding()
                     } else {
                         ForEach(filteredMentionUsers) { user in
@@ -163,7 +163,7 @@ struct ChatView: View {
                 }
             }
             .frame(maxHeight: 200)
-            .background(Color(hex: "161a22"))
+            .background(Color.vtPanel)
         }
     }
 
@@ -212,7 +212,7 @@ struct ChatView: View {
                 if let sub = roomSubtitle {
                     Text(sub)
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "8a91a0"))
+                        .foregroundColor(Color.vtTextDim)
                 }
             }
             Spacer()
@@ -233,8 +233,8 @@ struct ChatView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 12)
-        .background(Color(hex: "161a22"))
-        .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")), alignment: .bottom)
+        .background(Color.vtPanel)
+        .overlay(Rectangle().frame(height: 1).foregroundColor(Color.vtBorder), alignment: .bottom)
     }
 
     private var roomTitle: String {
@@ -271,7 +271,7 @@ struct ChatView: View {
                     HStack(spacing: 4) {
                         Text(name)
                             .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                         if msg.fromBot == true {
                             Text("BOT")
                                 .font(.system(size: 9, weight: .bold))
@@ -308,7 +308,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
-        .background(isMe ? Color(hex: "07c160") : Color(hex: "262c38"))
+        .background(isMe ? Color(hex: "07c160") : Color.vtBorder)
         .cornerRadius(10)
     }
 
@@ -396,7 +396,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(hex: "161a22"))
+        .background(Color.vtPanel)
     }
 
     private var inputBar: some View {
@@ -406,9 +406,9 @@ struct ChatView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 42, height: 42)
-                    .background(Color(hex: "1c212b"))
+                    .background(Color.vtPanel2)
                     .cornerRadius(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "262c38"), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.vtBorder, lineWidth: 1))
             }
 
             TextField("输入消息，Enter发送，@提及用户", text: Binding(
@@ -418,9 +418,9 @@ struct ChatView: View {
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color(hex: "0f1117"))
+                .background(Color.vtBG)
                 .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "262c38"), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.vtBorder, lineWidth: 1))
                 .foregroundColor(.white)
                 .onSubmit { sendMessage() }
 
@@ -438,8 +438,8 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(hex: "161a22"))
-        .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")), alignment: .top)
+        .background(Color.vtPanel)
+        .overlay(Rectangle().frame(height: 1).foregroundColor(Color.vtBorder), alignment: .top)
     }
 
     private func sendMessage() {
@@ -461,12 +461,16 @@ struct ChatView: View {
                 }
                 await MainActor.run {
                     chatVM.sendMessage(text, images: uploadedURLs)
+                    showMentionPanel = false
+                    mentionSearchText = ""
                     messageText = ""
                     draftImages.removeAll()
                 }
             }
         } else {
             chatVM.sendMessage(text)
+            showMentionPanel = false
+            mentionSearchText = ""
             messageText = ""
         }
     }

@@ -9,7 +9,7 @@ struct ContactsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "0f1117").ignoresSafeArea()
+                Color.vtBG.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -110,7 +110,7 @@ struct ContactsView: View {
         HStack {
             Text(text)
                 .font(.system(size: 12))
-                .foregroundColor(Color(hex: "8a91a0"))
+                .foregroundColor(Color.vtTextDim)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -129,12 +129,12 @@ struct ContactsView: View {
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.system(size: 12))
-                            .foregroundColor(showOnline ? Color(hex: "07c160") : Color(hex: "8a91a0"))
+                            .foregroundColor(showOnline ? Color(hex: "07c160") : Color.vtTextDim)
                     }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(Color(hex: "8a91a0"))
+                    .foregroundColor(Color.vtTextDim)
                     .font(.system(size: 12))
             }
             .padding(.horizontal, 16)
@@ -160,7 +160,7 @@ struct ContactsView: View {
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "8a91a0"))
+                            .foregroundColor(Color.vtTextDim)
                     }
                 }
                 Spacer()

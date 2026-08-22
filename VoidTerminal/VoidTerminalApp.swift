@@ -29,7 +29,10 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: "vt_theme") }
     }
     @Published var fontSize: FontSize = .md {
-        didSet { UserDefaults.standard.set(fontSize.rawValue, forKey: "vt_font") }
+        didSet {
+            UserDefaults.standard.set(fontSize.rawValue, forKey: "vt_font")
+            NotificationCenter.default.post(name: .fontSizeChanged, object: nil)
+        }
     }
     @Published var isAdmin: Bool = false {
         didSet { UserDefaults.standard.set(isAdmin, forKey: "vt_is_admin") }
@@ -47,6 +50,7 @@ final class AppState: ObservableObject {
         self.token = UserDefaults.standard.string(forKey: "vt_token")
         if let themeStr = UserDefaults.standard.string(forKey: "vt_theme"),
            let t = Theme(rawValue: themeStr) { self.theme = t }
+        self.isAdmin = UserDefaults.standard.bool(forKey: "vt_is_admin")
         if let fontStr = UserDefaults.standard.string(forKey: "vt_font"),
            let f = FontSize(rawValue: fontStr) { self.fontSize = f }
         // 监听WebSocket推送的状态更新

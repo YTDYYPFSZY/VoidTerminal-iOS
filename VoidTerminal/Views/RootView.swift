@@ -4,6 +4,7 @@ struct RootView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var chatVM = ChatViewModel()
     @State private var hasRestored = false
+    @State private var fontTick = 0
 
     var body: some View {
         Group {
@@ -13,6 +14,10 @@ struct RootView: View {
             } else {
                 AuthView()
             }
+        }
+        .id(fontTick)
+        .onReceive(NotificationCenter.default.publisher(for: .fontSizeChanged)) { _ in
+            fontTick += 1
         }
         .overlay(
             VStack {

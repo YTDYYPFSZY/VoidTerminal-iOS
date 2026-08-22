@@ -352,4 +352,5 @@ extension Notification.Name {
     static let hallRenamed = Notification.Name("hallRenamed")
     static let maxOnlineUpdate = Notification.Name("maxOnlineUpdate")
     static let adminStatusUpdate = Notification.Name("adminStatusUpdate")
+    static let fontSizeChanged = Notification.Name("fontSizeChanged")
 }

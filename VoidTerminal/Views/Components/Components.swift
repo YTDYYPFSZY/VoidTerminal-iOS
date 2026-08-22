@@ -44,7 +44,7 @@ struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.vt(size: 14))
-            .foregroundColor(.vtText)
+            .foregroundColor(.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .background(Color.black.opacity(0.8))

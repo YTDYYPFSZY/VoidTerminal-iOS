@@ -80,12 +80,12 @@ struct ProfileView: View {
 
                         // 菜单
                         VStack(spacing: 10) {
-                            if appState.isAdmin {
+                            if appState.isAdmin || appState.currentUser?.isAdmin == true {
                                 menuButton(title: "⚙ 站长管理", isAdmin: true) { showAdmin = true }
                             }
                             // 调试：显示管理员状态（正式版可移除）
                             HStack {
-                                Text("管理员状态: \(appState.isAdmin ? "是" : "否")")
+                                Text("管理员状态: \((appState.isAdmin || appState.currentUser?.isAdmin == true) ? "是" : "否")")
                                     .font(.vt(size: 12))
                                     .foregroundColor(.vtTextDim)
                                 Spacer()
@@ -157,7 +157,7 @@ struct ProfileView: View {
             HStack {
                 Text(title)
                     .font(.vt(size: 15))
-                    .foregroundColor(isAdmin ? .white : .white)
+                    .foregroundColor(.vtText)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundColor(Color.vtTextDim)

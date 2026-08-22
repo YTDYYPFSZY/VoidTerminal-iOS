@@ -70,39 +70,6 @@ extension Color {
     }
 }
 
-// MARK: - Theme Environment
-struct ThemeColors {
-    let bg: Color
-    let panel: Color
-    let panel2: Color
-    let border: Color
-    let text: Color
-    let textDim: Color
-    let bubbleOther: Color
-
-    static let dark = ThemeColors(
-        bg: AppTheme.darkBG, panel: AppTheme.darkPanel, panel2: AppTheme.darkPanel2,
-        border: AppTheme.darkBorder, text: AppTheme.darkText, textDim: AppTheme.darkTextDim,
-        bubbleOther: AppTheme.bubbleOther
-    )
-    static let light = ThemeColors(
-        bg: AppTheme.lightBG, panel: AppTheme.lightPanel, panel2: AppTheme.lightPanel2,
-        border: AppTheme.lightBorder, text: AppTheme.lightText, textDim: AppTheme.lightTextDim,
-        bubbleOther: AppTheme.bubbleOtherLight
-    )
-}
-
-private struct ThemeKey: EnvironmentKey {
-    static let defaultValue = ThemeColors.dark
-}
-
-extension EnvironmentValues {
-    var theme: ThemeColors {
-        get { self[ThemeKey.self] }
-        set { self[ThemeKey.self] = newValue }
-    }
-}
-
 // MARK: - Dynamic Font Size
 extension Font {
     static func vt(size: CGFloat, weight: Font.Weight = .regular) -> Font {

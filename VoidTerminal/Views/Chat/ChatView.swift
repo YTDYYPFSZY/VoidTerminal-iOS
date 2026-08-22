@@ -279,7 +279,7 @@ struct ChatView: View {
                                 .foregroundColor(Color(hex: "2563eb"))
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
-                                .background(Color.white)
+                                .background(Color.vtPanel2)
                                 .cornerRadius(3)
                         }
                     }
@@ -315,7 +315,7 @@ struct ChatView: View {
     }
 
     private func mentionHighlightedText(_ text: String, isMe: Bool) -> some View {
-        let normalColor = isMe ? Color(hex: "062") : Color.white
+        let normalColor = isMe ? Color(hex: "062") : Color.vtText
         let mentionColor = isMe ? Color.white.opacity(0.95) : Color(hex: "07c160")
 
         let pattern = "@([\\w\\u4e00-\\u9fa5]+)"

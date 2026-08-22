@@ -36,6 +36,28 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, from, fromName, fromAvatar, fromRole, fromBot, content, images, time, to, gid
     }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // id兜底：服务端历史消息可能缺id，用from+content+time生成
+        if let id = try? container.decode(String.self, forKey: .id) {
+            self.id = id
+        } else {
+            let from = try container.decode(String.self, forKey: .from)
+            let content = try container.decode(String.self, forKey: .content)
+            let time = try container.decode(Int.self, forKey: .time)
+            self.id = "\(from)_\(content)_\(time)"
+        }
+        from = try container.decode(String.self, forKey: .from)
+        fromName = try? container.decode(String.self, forKey: .fromName)
+        fromAvatar = try? container.decode(String.self, forKey: .fromAvatar)
+        fromRole = try? container.decode(String.self, forKey: .fromRole)
+        fromBot = try? container.decode(Bool.self, forKey: .fromBot)
+        content = try container.decode(String.self, forKey: .content)
+        images = try? container.decode([String].self, forKey: .images)
+        time = try container.decode(Int.self, forKey: .time)
+        to = try? container.decode(String.self, forKey: .to)
+        gid = try? container.decode(String.self, forKey: .gid)
+    }
 }
 
 // MARK: - Group
@@ -84,6 +106,11 @@ struct MomentComment: Codable, Hashable, Identifiable {
     var userName: String?
     let text: String
     let time: Int
+    enum CodingKeys: String, CodingKey {
+        case user = "author"
+        case userName = "authorName"
+        case text, time
+    }
 }
 
 struct MomentResponse: Codable {

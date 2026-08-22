@@ -83,6 +83,20 @@ struct ProfileView: View {
                             if appState.isAdmin {
                                 menuButton(title: "⚙ 站长管理", isAdmin: true) { showAdmin = true }
                             }
+                            // 调试：显示管理员状态（正式版可移除）
+                            HStack {
+                                Text("管理员状态: \(appState.isAdmin ? "是" : "否")")
+                                    .font(.vt(size: 12))
+                                    .foregroundColor(.vtTextDim)
+                                Spacer()
+                                Button("刷新") {
+                                    if let token = appState.token {
+                                        WebSocketService.shared.connect(token: token)
+                                    }
+                                }
+                                .font(.vt(size: 12))
+                            }
+                            .padding(.horizontal, 16)
 
                             menuButton(title: "日间 / 夜间模式") {
                                 appState.theme = appState.theme == .dark ? .light : .dark

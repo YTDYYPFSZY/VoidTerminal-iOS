@@ -31,7 +31,9 @@ final class AppState: ObservableObject {
     @Published var fontSize: FontSize = .md {
         didSet { UserDefaults.standard.set(fontSize.rawValue, forKey: "vt_font") }
     }
-    @Published var isAdmin: Bool = false
+    @Published var isAdmin: Bool = false {
+        didSet { UserDefaults.standard.set(isAdmin, forKey: "vt_is_admin") }
+    }
     @Published var hallName: String = "公共大厅"
     @Published var maxOnline: Int = 0
 

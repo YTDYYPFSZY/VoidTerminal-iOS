@@ -91,6 +91,7 @@ struct ChatView: View {
                 if msg.isFromMe {
                     Button("撤回", role: .destructive) {
                         chatVM.recallMessage(msg)
+                        chatVM.removeMessageLocally(msg)
                         contextMenuMessage = nil
                     }
                 }
@@ -292,7 +293,8 @@ struct ChatView: View {
             if !isMe { Spacer(minLength: 40) }
         }
         .contentShape(Rectangle())
-        .onLongPressGesture {
+        .onLongPressGesture(minimumDuration: 0.4) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             contextMenuMessage = msg
         }
     }

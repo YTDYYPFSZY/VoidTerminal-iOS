@@ -73,12 +73,11 @@ final class ChatViewModel: ObservableObject {
                 guard let self = self else { return }
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
-                // 去重：替换临时消息
-                if let idx = self.globalMessages.firstIndex(where: {
-                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
-                }) {
-                    self.globalMessages[idx] = m
-                } else {
+                // 去重：收到自己的消息时，移除所有临时消息
+                if m.from == self.currentUserId {
+                    self.globalMessages.removeAll { $0.id.hasPrefix("temp_") }
+                }
+                if !self.globalMessages.contains(where: { $0.id == m.id }) {
                     self.globalMessages.append(m)
                 }
                 if self.globalMessages.count > 500 {
@@ -94,12 +93,11 @@ final class ChatViewModel: ObservableObject {
                 let peer = m.from == self.currentUserId ? (m.to ?? "") : m.from
                 let key = self.dmRoomKey(self.currentUserId, peer)
                 if self.dmMessages[key] == nil { self.dmMessages[key] = [] }
-                // 去重：替换临时消息
-                if let idx = self.dmMessages[key]?.firstIndex(where: {
-                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
-                }) {
-                    self.dmMessages[key]?[idx] = m
-                } else {
+                // 去重：收到自己的消息时，移除所有临时消息
+                if m.from == self.currentUserId {
+                    self.dmMessages[key]?.removeAll { $0.id.hasPrefix("temp_") }
+                }
+                if !(self.dmMessages[key]?.contains(where: { $0.id == m.id }) ?? false) {
                     self.dmMessages[key]?.append(m)
                 }
             }
@@ -110,12 +108,11 @@ final class ChatViewModel: ObservableObject {
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
                 if self.groupMessages[gid] == nil { self.groupMessages[gid] = [] }
-                // 去重：替换临时消息
-                if let idx = self.groupMessages[gid]?.firstIndex(where: {
-                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
-                }) {
-                    self.groupMessages[gid]?[idx] = m
-                } else {
+                // 去重：收到自己的消息时，移除所有临时消息
+                if m.from == self.currentUserId {
+                    self.groupMessages[gid]?.removeAll { $0.id.hasPrefix("temp_") }
+                }
+                if !(self.groupMessages[gid]?.contains(where: { $0.id == m.id }) ?? false) {
                     self.groupMessages[gid]?.append(m)
                 }
             }
@@ -317,6 +314,15 @@ final class ChatViewModel: ObservableObject {
             ws.recall(room: "dm", id: msg.id, to: peerId)
         case .group(let gid, _):
             ws.recall(room: "group", id: msg.id, gid: gid)
+        }
+    }
+    func removeMessageLocally(_ msg: ChatMessage) {
+        globalMessages.removeAll { $0.id == msg.id }
+        for key in dmMessages.keys {
+            dmMessages[key]?.removeAll { $0.id == msg.id }
+        }
+        for key in groupMessages.keys {
+            groupMessages[key]?.removeAll { $0.id == msg.id }
         }
     }
 

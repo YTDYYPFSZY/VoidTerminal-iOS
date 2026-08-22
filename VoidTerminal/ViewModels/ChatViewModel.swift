@@ -246,7 +246,7 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func handleHello(_ msg: HelloMessage) {
-        print("[HELLO] friends=\(msg.friends?.count ?? -1) groups=\(msg.groups?.count ?? -1) globalMsgs=\(msg.globalMsgs?.count ?? -1) dmRooms=\(msg.dmRooms?.count ?? -1) isAdmin=\(msg.isAdmin ?? false) hallName=\(msg.hallName ?? "nil")")
+        AppLogger.shared.log("[HELLO] friends=\(msg.friends?.count ?? -1) groups=\(msg.groups?.count ?? -1) globalMsgs=\(msg.globalMsgs?.count ?? -1) dmRooms=\(msg.dmRooms?.count ?? -1) isAdmin=\(msg.isAdmin ?? false) hallName=\(msg.hallName ?? "nil")")
         if let user = msg.selfUser {
             currentUserName = user.username
             setCurrentUserId(user.id)

@@ -230,10 +230,10 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         case "hello":
             do {
                 let msg = try decoder.decode(HelloMessage.self, from: data)
-                print("[WS] hello decoded successfully")
+                AppLogger.shared.log("[WS] hello decoded successfully")
                 onHello?(msg)
             } catch {
-                print("[WS] hello decode FAILED: \(error)")
+                AppLogger.shared.log("[WS] hello decode FAILED: \(error)")
             }
         case "global":
             if var msg = try? decoder.decode(ChatMessage.self, from: data) {

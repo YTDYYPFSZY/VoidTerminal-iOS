@@ -10,7 +10,7 @@ struct ServerConfig {
             UserDefaults.standard.string(forKey: "vt_server_url")
                 ?? "http://buer.kdns.fr"
         }
-        set {
+        nonmutating set {
             UserDefaults.standard.set(newValue, forKey: "vt_server_url")
         }
     }

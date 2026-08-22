@@ -121,7 +121,7 @@ struct GroupSettingsView: View {
             }
             .alert("修改群名称", isPresented: $showRename) {
                 TextField("新群名称", text: $newName)
-                    .onChange(of: newName) { _, v in
+                    .onChange(of: newName) { v in
                         if v.count > 20 { newName = String(v.prefix(20)) }
                     }
                 Button("确定") {
@@ -135,7 +135,7 @@ struct GroupSettingsView: View {
                 AddGroupMembersView(group: group)
                     .environmentObject(chatVM)
             }
-            .onChange(of: avatarItem) { _, newValue in
+            .onChange(of: avatarItem) { newValue in
                 guard let newValue = newValue else { return }
                 Task {
                     if let data = try? await newValue.loadTransferable(type: Data.self),

@@ -221,7 +221,7 @@ struct CreateGroupView: View {
             Form {
                 Section("群名称") {
                     TextField("群名称（1-20位）", text: $groupName)
-                        .onChange(of: groupName) { _, newValue in
+                        .onChange(of: groupName) { newValue in
                             if newValue.count > 20 { groupName = String(newValue.prefix(20)) }
                         }
                 }

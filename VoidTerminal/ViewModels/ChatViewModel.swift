@@ -72,7 +72,7 @@ final class ChatViewModel: ObservableObject {
                 case "dm":
                     if let to = to, let self = self {
                         let key = self.dmRoomKey(self.currentUserId, to)
-                        self?.dmMessages[key]?.removeAll { $0.id == id }
+                        self.dmMessages[key]?.removeAll { $0.id == id }
                     }
                 case "group":
                     if let gid = gid {

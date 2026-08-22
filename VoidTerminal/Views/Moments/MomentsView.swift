@@ -256,7 +256,7 @@ struct PostMomentView: View {
                     TextEditor(text: $text)
                         .frame(minHeight: 100)
                         .foregroundColor(.white)
-                        .onChange(of: text) { _, v in
+                        .onChange(of: text) { v in
                             if v.count > 2000 { text = String(v.prefix(2000)) }
                         }
                 } header: {
@@ -341,7 +341,7 @@ struct PostMomentView: View {
                     Button("取消") { dismiss() }
                 }
             }
-            .onChange(of: imagePicker) { _, newValue in
+            .onChange(of: imagePicker) { newValue in
                 guard let newValue = newValue else { return }
                 Task {
                     if let data = try? await newValue.loadTransferable(type: Data.self),

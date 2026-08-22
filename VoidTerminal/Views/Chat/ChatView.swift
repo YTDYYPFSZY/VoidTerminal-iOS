@@ -37,7 +37,7 @@ struct ChatView: View {
                     .padding(.vertical, 20)
                 }
                 .onAppear { scrollProxy = proxy }
-                .onChange(of: messages.count) { _, _ in
+                .onChange(of: messages.count) { _ in
                     if let last = messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
@@ -85,7 +85,7 @@ struct ChatView: View {
             ImagePreviewView(url: item.url)
         }
         .photosPicker(isPresented: $showImagePicker, selection: $imagePicker, matching: .images)
-        .onChange(of: imagePicker) { _, newValue in
+        .onChange(of: imagePicker) { newValue in
             guard let newValue = newValue else { return }
             Task {
                 if let data = try? await newValue.loadTransferable(type: Data.self),

@@ -114,7 +114,7 @@ struct ProfileView: View {
                 }
             }
             .navigationBarHidden(true)
-            .onChange(of: avatarItem) { _, newValue in
+            .onChange(of: avatarItem) { newValue in
                 guard let newValue = newValue else { return }
                 Task {
                     if let data = try? await newValue.loadTransferable(type: Data.self),
@@ -174,7 +174,7 @@ struct ChangeUsernameView: View {
                 Section {
                     TextField("新用户名（2-20位）", text: $newUsername)
                         .autocapitalization(.none)
-                        .onChange(of: newUsername) { _, v in
+                        .onChange(of: newUsername) { v in
                             if v.count > 20 { newUsername = String(v.prefix(20)) }
                         }
                 }

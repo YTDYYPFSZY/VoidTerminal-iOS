@@ -268,10 +268,9 @@ final class ChatViewModel: ObservableObject {
         if let admin = msg.isAdmin {
             NotificationCenter.default.post(name: .adminStatusUpdate, object: admin)
         }
-        // 处理dmRooms（对象格式：{peerId: [messages]}）
+        // 处理dmRooms（对象格式：{roomKey: [messages]}，key已是排序后的roomKey，直接用）
         if let rooms = msg.dmRooms {
-            for (peerId, msgs) in rooms {
-                let key = dmRoomKey(currentUserId, peerId)
+            for (key, msgs) in rooms {
                 dmMessages[key] = msgs.map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
             }
         }

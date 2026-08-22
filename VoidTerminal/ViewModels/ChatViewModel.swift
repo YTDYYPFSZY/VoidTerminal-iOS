@@ -45,6 +45,14 @@ final class ChatViewModel: ObservableObject {
            let list = try? JSONDecoder().decode([ChatMessage].self, from: data) {
             globalMessages = list
         }
+        if let data = defaults.data(forKey: "vt_dm_msgs"),
+           let dict = try? JSONDecoder().decode([String: [ChatMessage]].self, from: data) {
+            dmMessages = dict
+        }
+        if let data = defaults.data(forKey: "vt_group_msgs"),
+           let dict = try? JSONDecoder().decode([String: [ChatMessage]].self, from: data) {
+            groupMessages = dict
+        }
         if let uid = defaults.string(forKey: "vt_current_uid") {
             setCurrentUserId(uid)
         }
@@ -59,6 +67,12 @@ final class ChatViewModel: ObservableObject {
         }
         if let data = try? JSONEncoder().encode(globalMessages) {
             defaults.set(data, forKey: "vt_global_msgs")
+        }
+        if let data = try? JSONEncoder().encode(dmMessages) {
+            defaults.set(data, forKey: "vt_dm_msgs")
+        }
+        if let data = try? JSONEncoder().encode(groupMessages) {
+            defaults.set(data, forKey: "vt_group_msgs")
         }
     }
 
@@ -100,6 +114,7 @@ final class ChatViewModel: ObservableObject {
                 if !(self.dmMessages[key]?.contains(where: { $0.id == m.id }) ?? false) {
                     self.dmMessages[key]?.append(m)
                 }
+                self.saveToLocal()
             }
         }
         ws.onGroupMessage = { [weak self] msg in
@@ -115,6 +130,7 @@ final class ChatViewModel: ObservableObject {
                 if !(self.groupMessages[gid]?.contains(where: { $0.id == m.id }) ?? false) {
                     self.groupMessages[gid]?.append(m)
                 }
+                self.saveToLocal()
             }
         }
         ws.onRecalled = { [weak self] room, id, to, gid in
@@ -252,11 +268,11 @@ final class ChatViewModel: ObservableObject {
         if let admin = msg.isAdmin {
             NotificationCenter.default.post(name: .adminStatusUpdate, object: admin)
         }
-        // 处理dmRooms
+        // 处理dmRooms（对象格式：{peerId: [messages]}）
         if let rooms = msg.dmRooms {
-            for room in rooms {
-                let key = dmRoomKey(currentUserId, room.peerId)
-                if dmMessages[key] == nil { dmMessages[key] = [] }
+            for (peerId, msgs) in rooms {
+                let key = dmRoomKey(currentUserId, peerId)
+                dmMessages[key] = msgs.map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
             }
         }
         saveToLocal()

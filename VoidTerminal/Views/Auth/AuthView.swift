@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AuthView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var chatVM: ChatViewModel
     @State private var isLogin = true
     @State private var loginUsername = ""
     @State private var loginPassword = ""
@@ -160,6 +161,7 @@ struct AuthView: View {
                 await MainActor.run {
                     appState.token = resp.token
                     appState.currentUser = resp.user
+                    chatVM.setCurrentUserId(resp.user.id)
                     isLoading = false
                 }
             } catch {

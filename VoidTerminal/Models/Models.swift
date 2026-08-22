@@ -157,15 +157,6 @@ struct ImageUploadResponse: Codable {
     let url: String
 }
 
-// MARK: - DM Room
-struct DMRoom: Codable, Hashable {
-    let peerId: String
-    let peerName: String
-    var peerAvatar: String?
-    var lastMessage: String?
-    var lastTime: Int?
-}
-
 // MARK: - API Responses
 struct LoginResponse: Codable {
     let ok: Bool
@@ -192,7 +183,7 @@ struct HelloMessage: Codable {
     let groups: [ChatGroup]?
     let friends: [User]?
     let pendingRequests: [FriendRequest]?
-    let dmRooms: [DMRoom]?
+    let dmRooms: [String: [ChatMessage]]?
     let groupMsgs: [String: [ChatMessage]]?
     let moments: [Moment]?
 

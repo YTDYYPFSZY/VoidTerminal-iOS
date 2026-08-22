@@ -13,6 +13,7 @@ struct RootView: View {
                     .environmentObject(chatVM)
             } else {
                 AuthView()
+                    .environmentObject(chatVM)
             }
         }
         .id(fontTick)

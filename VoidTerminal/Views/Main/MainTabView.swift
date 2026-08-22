@@ -47,5 +47,11 @@ struct MainTabView: View {
             }
         }
         .background(Color(hex: "0f1117").ignoresSafeArea())
+        .onAppear {
+            // 确保进入主界面后建立WebSocket连接（此时ChatViewModel回调已就绪）
+            if let token = appState.token {
+                WebSocketService.shared.connect(token: token)
+            }
+        }
     }
 }

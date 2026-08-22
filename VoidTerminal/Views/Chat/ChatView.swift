@@ -16,15 +16,36 @@ struct ChatView: View {
     @State private var contextMenuMessage: ChatMessage?
     @State private var previewImageURL: String?
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var showMentionPanel = false
+    @State private var mentionSearchText = ""
 
     private let api = APIService.shared
 
+    private var mentionUsers: [User] {
+        switch room {
+        case .group(let gid, _):
+            if let group = chatVM.group(by: gid) {
+                return group.members.compactMap { chatVM.user(by: $0) }
+                    .filter { $0.id != chatVM.currentUserId }
+            }
+            return []
+        case .dm(let peerId, _):
+            if let peer = chatVM.user(by: peerId) { return [peer] }
+            return []
+        case .global:
+            return chatVM.friends
+        }
+    }
+
+    private var filteredMentionUsers: [User] {
+        if mentionSearchText.isEmpty { return mentionUsers }
+        return mentionUsers.filter { $0.username.lowercased().contains(mentionSearchText.lowercased()) }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // 头部
             chatHeader
 
-            // 消息列表
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 14) {
@@ -44,12 +65,14 @@ struct ChatView: View {
                 }
             }
 
-            // 草稿图片
+            if showMentionPanel {
+                mentionPanel
+            }
+
             if !draftImages.isEmpty {
                 draftImagesView
             }
 
-            // 输入栏
             inputBar
         }
         .background(Color(hex: "0f1117").ignoresSafeArea())
@@ -108,7 +131,71 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - Header
+    private var mentionPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38"))
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if filteredMentionUsers.isEmpty {
+                        Text("无匹配用户")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "8a91a0"))
+                            .padding()
+                    } else {
+                        ForEach(filteredMentionUsers) { user in
+                            Button {
+                                insertMention(user.username)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    AvatarView(name: user.username, avatarURL: user.avatar, size: 32)
+                                    Text(user.username)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+            .background(Color(hex: "161a22"))
+        }
+    }
+
+    private func insertMention(_ username: String) {
+        if let atRange = messageText.range(of: "@", options: .backwards) {
+            messageText = String(messageText[..<atRange.lowerBound]) + "@" + username + " "
+        } else {
+            messageText += "@" + username + " "
+        }
+        showMentionPanel = false
+        mentionSearchText = ""
+    }
+
+    private func handleTextChange(_ text: String) {
+        messageText = text
+        if let lastChar = text.last, lastChar == "@" {
+            showMentionPanel = true
+            mentionSearchText = ""
+            return
+        }
+        if let atRange = text.range(of: "@", options: .backwards) {
+            let afterAt = String(text[atRange.upperBound...])
+            if !afterAt.contains(" ") && !afterAt.contains("\n") {
+                showMentionPanel = true
+                mentionSearchText = afterAt
+                return
+            }
+        }
+        showMentionPanel = false
+        mentionSearchText = ""
+    }
+
     private var chatHeader: some View {
         HStack(spacing: 10) {
             Button { dismiss() } label: {
@@ -168,7 +255,6 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - Messages
     private var messages: [ChatMessage] {
         chatVM.messages(for: room)
     }
@@ -177,11 +263,9 @@ struct ChatView: View {
         let isMe = msg.isFromMe || msg.from == chatVM.currentUserId
         return HStack(alignment: .top, spacing: 10) {
             if isMe { Spacer(minLength: 40) }
-
             if !isMe {
                 AvatarView(name: msg.fromName ?? "?", avatarURL: msg.fromAvatar, size: 36)
             }
-
             VStack(alignment: isMe ? .trailing : .leading, spacing: 4) {
                 if !isMe, let name = msg.fromName, case .group = room {
                     HStack(spacing: 4) {
@@ -201,7 +285,6 @@ struct ChatView: View {
                 }
                 messageBubble(msg, isMe: isMe)
             }
-
             if isMe {
                 AvatarView(name: appState.currentUser?.username ?? "我", avatarURL: appState.currentUser?.avatar, size: 36,
                            gradient: Gradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")]))
@@ -217,10 +300,7 @@ struct ChatView: View {
     private func messageBubble(_ msg: ChatMessage, isMe: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !msg.content.isEmpty {
-                Text(msg.content)
-                    .font(.system(size: 15))
-                    .foregroundColor(isMe ? Color(hex: "062") : .white)
-                    .fixedSize(horizontal: false, vertical: true)
+                mentionHighlightedText(msg.content, isMe: isMe)
             }
             if let images = msg.images, !images.isEmpty {
                 messageImages(images, isMe: isMe)
@@ -230,6 +310,38 @@ struct ChatView: View {
         .padding(.vertical, 9)
         .background(isMe ? Color(hex: "07c160") : Color(hex: "262c38"))
         .cornerRadius(10)
+    }
+
+    private func mentionHighlightedText(_ text: String, isMe: Bool) -> some View {
+        let normalColor = isMe ? Color(hex: "062") : Color.white
+        let mentionColor = isMe ? Color.white.opacity(0.95) : Color(hex: "07c160")
+
+        let pattern = "@([\\w\\u4e00-\\u9fa5]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return Text(text).font(.system(size: 15)).foregroundColor(normalColor).fixedSize(horizontal: false, vertical: true)
+        }
+
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+
+        var result = Text("").font(.system(size: 15))
+        var lastEnd = 0
+
+        for match in matches {
+            if match.range.location > lastEnd {
+                let normal = nsText.substring(with: NSRange(location: lastEnd, length: match.range.location - lastEnd))
+                result = result + Text(normal).foregroundColor(normalColor)
+            }
+            let mention = nsText.substring(with: match.range)
+            result = result + Text(mention).foregroundColor(mentionColor).fontWeight(.semibold)
+            lastEnd = match.range.location + match.range.length
+        }
+        if lastEnd < nsText.length {
+            let remaining = nsText.substring(from: lastEnd)
+            result = result + Text(remaining).foregroundColor(normalColor)
+        }
+
+        return result.fixedSize(horizontal: false, vertical: true)
     }
 
     private func messageImages(_ images: [String], isMe: Bool) -> some View {
@@ -259,7 +371,6 @@ struct ChatView: View {
         .frame(maxWidth: images.count == 1 ? 160 : 220)
     }
 
-    // MARK: - Draft Images
     private var draftImagesView: some View {
         HStack(spacing: 8) {
             ForEach(Array(draftImages.enumerated()), id: \.offset) { idx, img in
@@ -288,7 +399,6 @@ struct ChatView: View {
         .background(Color(hex: "161a22"))
     }
 
-    // MARK: - Input Bar
     private var inputBar: some View {
         HStack(spacing: 10) {
             Button { showImagePicker = true } label: {
@@ -301,7 +411,10 @@ struct ChatView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "262c38"), lineWidth: 1))
             }
 
-            TextField("输入消息，Enter发送", text: $messageText, axis: .vertical)
+            TextField("输入消息，Enter发送，@提及用户", text: Binding(
+                get: { messageText },
+                set: { handleTextChange($0) }
+            ), axis: .vertical)
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -332,9 +445,7 @@ struct ChatView: View {
     private func sendMessage() {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !draftImages.isEmpty else { return }
-
         if !draftImages.isEmpty {
-            // 上传图片
             Task {
                 var uploadedURLs: [String] = []
                 for img in draftImages {
@@ -361,7 +472,6 @@ struct ChatView: View {
     }
 }
 
-// MARK: - Image Preview
 struct ImagePreviewURL: Identifiable {
     let url: String
     var id: String { url }
@@ -370,7 +480,6 @@ struct ImagePreviewURL: Identifiable {
 struct ImagePreviewView: View {
     let url: String
     @Environment(\.dismiss) private var dismiss
-
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()

@@ -57,7 +57,16 @@ struct ChatView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
                 }
-                .onAppear { scrollProxy = proxy; chatVM.currentRoom = room }
+                .onAppear {
+                    scrollProxy = proxy
+                    chatVM.currentRoom = room
+                    // 打开对话时滚动到最新消息
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let last = messages.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
                 .onChange(of: messages.count) { _ in
                     if let last = messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }

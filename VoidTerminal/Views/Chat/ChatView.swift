@@ -275,6 +275,16 @@ struct ChatView: View {
             if isMe { Spacer(minLength: 40) }
             if !isMe {
                 AvatarView(name: msg.fromName ?? "?", avatarURL: msg.fromAvatar, size: 36)
+                    .onLongPressGesture(minimumDuration: 0.3) {
+                        // 群聊中长按成员头像，自动@该成员
+                        if case .group = room, let name = msg.fromName {
+                            if !messageText.isEmpty && !messageText.hasSuffix(" ") {
+                                messageText += " "
+                            }
+                            messageText += "@" + name + " "
+                            isInputFocused = true
+                        }
+                    }
             }
             VStack(alignment: isMe ? .trailing : .leading, spacing: 4) {
                 if !isMe, let name = msg.fromName, case .group = room {
@@ -433,6 +443,7 @@ struct ChatView: View {
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.vtBorder, lineWidth: 1))
                 .foregroundColor(.vtText)
+                .focused($isInputFocused)
                 .onSubmit { sendMessage() }
 
             Button { sendMessage() } label: {

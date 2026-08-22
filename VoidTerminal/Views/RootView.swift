@@ -19,6 +19,11 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .fontSizeChanged)) { _ in
             fontTick += 1
         }
+        .onChange(of: appState.currentUser) { _, newUser in
+            if let user = newUser {
+                chatVM.setCurrentUserId(user.id)
+            }
+        }
         .overlay(
             VStack {
                 if let toast = chatVM.toast {

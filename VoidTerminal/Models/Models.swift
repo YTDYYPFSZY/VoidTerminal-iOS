@@ -114,6 +114,19 @@ struct Moment: Codable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, author, authorName, authorAvatar, text, images, time, likes, comments
     }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        author = try container.decode(String.self, forKey: .author)
+        authorName = try? container.decode(String.self, forKey: .authorName)
+        authorAvatar = try? container.decode(String.self, forKey: .authorAvatar)
+        text = try container.decode(String.self, forKey: .text)
+        images = (try? container.decode([String].self, forKey: .images)) ?? []
+        time = try container.decode(Int.self, forKey: .time)
+        likes = (try? container.decode([String].self, forKey: .likes)) ?? []
+        // comments兜底：解码失败给空数组，不让整条moment崩
+        comments = (try? container.decode([MomentComment].self, forKey: .comments)) ?? []
+    }
 }
 
 struct MomentComment: Codable, Hashable, Identifiable {

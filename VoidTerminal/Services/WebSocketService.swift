@@ -14,7 +14,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     var onGlobalMessage: ((ChatMessage) -> Void)?
     var onDMMessage: ((ChatMessage) -> Void)?
     var onGroupMessage: ((ChatMessage) -> Void)?
-    var onRecalled: ((room: String, id: String, to: String?, gid: String?)) -> Void)?
+    var onRecalled: ((String, String, String?, String?) -> Void)?
     var onError: ((String) -> Void)?
     var onBanned: ((String) -> Void)?
     var onKicked: ((String) -> Void)?
@@ -22,13 +22,13 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     var onPresence: (([String: Bool]) -> Void)?
     var onFriendRequest: ((FriendRequest) -> Void)?
     var onFriendUpdate: (([User]) -> Void)?
-    var onRequestRespond: ((ok: Bool, action: String, fromName: String) -> Void)?
-    var onRequestSent: ((ok: Bool, error: String?) -> Void)?
+    var onRequestRespond: ((Bool, String, String) -> Void)?
+    var onRequestSent: ((Bool, String?) -> Void)?
     var onGroupCreated: ((ChatGroup) -> Void)?
-    var onGroupRemoved: ((gid: String, error: String) -> Void)?
-    var onGroupRenamed: ((gid: String, group: ChatGroup) -> Void)?
-    var onGroupMemberRemoved: ((gid: String, group: ChatGroup, userId: String) -> Void)?
-    var onGroupAvatarUpdated: ((gid: String, avatar: String) -> Void)?
+    var onGroupRemoved: ((String, String) -> Void)?
+    var onGroupRenamed: ((String, ChatGroup) -> Void)?
+    var onGroupMemberRemoved: ((String, ChatGroup, String) -> Void)?
+    var onGroupAvatarUpdated: ((String, String) -> Void)?
     var onMomentsUpdate: (([Moment]) -> Void)?
     var onMaxOnlineUpdate: ((Int) -> Void)?
     var onHallRenamed: ((String) -> Void)?
@@ -234,7 +234,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             let id = dict["id"] as? String ?? ""
             let to = dict["to"] as? String
             let gid = dict["gid"] as? String
-            onRecalled?((room, id, to, gid))
+            onRecalled?(room, id, to, gid)
         case "error":
             onError?(dict["error"] as? String ?? "未知错误")
         case "banned":
@@ -263,11 +263,11 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             let ok = dict["ok"] as? Bool ?? false
             let action = dict["action"] as? String ?? ""
             let fromName = dict["fromName"] as? String ?? ""
-            onRequestRespond?((ok, action, fromName))
+            onRequestRespond?(ok, action, fromName)
         case "request-sent":
             let ok = dict["ok"] as? Bool ?? false
             let error = dict["error"] as? String
-            onRequestSent?((ok, error))
+            onRequestSent?(ok, error)
         case "group-created":
             if let gDict = dict["group"] as? [String: Any],
                let gData = try? JSONSerialization.data(withJSONObject: gDict),
@@ -277,7 +277,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         case "group-removed":
             let gid = dict["gid"] as? String ?? ""
             let error = dict["error"] as? String ?? ""
-            onGroupRemoved?((gid, error))
+            onGroupRemoved?(gid, error)
         case "group-renamed":
             let gid = dict["gid"] as? String ?? ""
             if let gDict = dict["group"] as? [String: Any],
@@ -291,12 +291,12 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             if let gDict = dict["group"] as? [String: Any],
                let gData = try? JSONSerialization.data(withJSONObject: gDict),
                let group = try? decoder.decode(ChatGroup.self, from: gData) {
-                onGroupMemberRemoved?((gid, group, userId))
+                onGroupMemberRemoved?(gid, group, userId)
             }
         case "group-avatar-updated":
             let gid = dict["gid"] as? String ?? ""
             let avatar = dict["avatar"] as? String ?? ""
-            onGroupAvatarUpdated?((gid, avatar))
+            onGroupAvatarUpdated?(gid, avatar)
         case "moments":
             if let moments = dict["moments"] as? [[String: Any]],
                let mData = try? JSONSerialization.data(withJSONObject: moments),

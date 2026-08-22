@@ -339,7 +339,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         isConnected = false
         onDisconnect?()
     }
-}
+
 
     // MARK: - Heartbeat
     private func startHeartbeat() {
@@ -367,3 +367,4 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             self.connect(token: token)
         }
     }
+}

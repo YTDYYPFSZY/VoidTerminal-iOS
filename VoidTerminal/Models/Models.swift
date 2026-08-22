@@ -36,6 +36,22 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, from, fromName, fromAvatar, fromRole, fromBot, content, images, time, to, gid
     }
+    // 成员初始化器（自定义init(from:)后需手动提供）
+    init(id: String, from: String, fromName: String? = nil, fromAvatar: String? = nil,
+         fromRole: String? = nil, fromBot: Bool? = nil, content: String, images: [String]? = nil,
+         time: Int, to: String? = nil, gid: String? = nil) {
+        self.id = id
+        self.from = from
+        self.fromName = fromName
+        self.fromAvatar = fromAvatar
+        self.fromRole = fromRole
+        self.fromBot = fromBot
+        self.content = content
+        self.images = images
+        self.time = time
+        self.to = to
+        self.gid = gid
+    }
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // id兜底：服务端历史消息可能缺id，用from+content+time生成

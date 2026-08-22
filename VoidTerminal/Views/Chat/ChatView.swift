@@ -1,0 +1,388 @@
+import SwiftUI
+import PhotosUI
+
+struct ChatView: View {
+    @EnvironmentObject var chatVM: ChatViewModel
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+    let room: ChatViewModel.RoomType
+
+    @State private var messageText = ""
+    @State private var draftImages: [UIImage] = []
+    @State private var imagePicker: PhotosPickerItem?
+    @State private var showImagePicker = false
+    @State private var showGroupSettings = false
+    @State private var showDeleteConfirm = false
+    @State private var contextMenuMessage: ChatMessage?
+    @State private var previewImageURL: String?
+    @State private var scrollProxy: ScrollViewProxy?
+
+    private let api = APIService.shared
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 头部
+            chatHeader
+
+            // 消息列表
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        ForEach(messages) { msg in
+                            messageRow(msg)
+                                .id(msg.id)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 20)
+                }
+                .onAppear { scrollProxy = proxy }
+                .onChange(of: messages.count) { _, _ in
+                    if let last = messages.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+            }
+
+            // 草稿图片
+            if !draftImages.isEmpty {
+                draftImagesView
+            }
+
+            // 输入栏
+            inputBar
+        }
+        .background(Color(hex: "0f1117").ignoresSafeArea())
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showGroupSettings) {
+            if case .group(let gid, _) = room, let group = chatVM.group(by: gid) {
+                GroupSettingsView(group: group)
+                    .environmentObject(chatVM)
+            }
+        }
+        .confirmationDialog("消息操作", isPresented: Binding(
+            get: { contextMenuMessage != nil },
+            set: { if !$0 { contextMenuMessage = nil } }
+        )) {
+            if let msg = contextMenuMessage {
+                if msg.isFromMe {
+                    Button("撤回", role: .destructive) {
+                        chatVM.recallMessage(msg)
+                        contextMenuMessage = nil
+                    }
+                }
+                Button("复制") {
+                    UIPasteboard.general.string = msg.content
+                    contextMenuMessage = nil
+                }
+                Button("取消", role: .cancel) { contextMenuMessage = nil }
+            }
+        }
+        .fullScreenCover(item: Binding(
+            get: { previewImageURL.map { ImagePreviewURL(url: $0) } },
+            set: { previewImageURL = $0?.url }
+        )) { item in
+            ImagePreviewView(url: item.url)
+        }
+        .photosPicker(isPresented: $showImagePicker, selection: $imagePicker, matching: .images)
+        .onChange(of: imagePicker) { _, newValue in
+            guard let newValue = newValue else { return }
+            Task {
+                if let data = try? await newValue.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run { draftImages.append(image) }
+                }
+            }
+            imagePicker = nil
+        }
+        .confirmationDialog("删除联系人", isPresented: $showDeleteConfirm) {
+            Button("删除", role: .destructive) {
+                if case .dm(let peerId, _) = room {
+                    WebSocketService.shared.unfriend(userId: peerId)
+                    dismiss()
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("确定要删除该联系人吗？")
+        }
+    }
+
+    // MARK: - Header
+    private var chatHeader: some View {
+        HStack(spacing: 10) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(roomTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                if let sub = roomSubtitle {
+                    Text(sub)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "8a91a0"))
+                }
+            }
+            Spacer()
+            if case .group = room {
+                Button { showGroupSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundColor(.white)
+                        .padding(8)
+                }
+            }
+            if case .dm = room {
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "person.fill.badge.minus")
+                        .foregroundColor(Color(hex: "e5484d"))
+                        .padding(8)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
+        .background(Color(hex: "161a22"))
+        .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")), alignment: .bottom)
+    }
+
+    private var roomTitle: String {
+        switch room {
+        case .global: return appState.hallName
+        case .dm(_, let name): return name
+        case .group(_, let name): return name
+        }
+    }
+
+    private var roomSubtitle: String? {
+        switch room {
+        case .global: return nil
+        case .dm(let peerId, _): return chatVM.isOnline(peerId) ? "在线" : "离线"
+        case .group(let gid, _):
+            if let g = chatVM.group(by: gid) { return "\(g.members.count) 人" }
+            return nil
+        }
+    }
+
+    // MARK: - Messages
+    private var messages: [ChatMessage] {
+        chatVM.messages(for: room)
+    }
+
+    private func messageRow(_ msg: ChatMessage) -> some View {
+        let isMe = msg.isFromMe || msg.from == chatVM.currentUserId
+        return HStack(alignment: .top, spacing: 10) {
+            if isMe { Spacer(minLength: 40) }
+
+            if !isMe {
+                AvatarView(name: msg.fromName ?? "?", avatarURL: msg.fromAvatar, size: 36)
+            }
+
+            VStack(alignment: isMe ? .trailing : .leading, spacing: 4) {
+                if !isMe, let name = msg.fromName, case .group = room {
+                    HStack(spacing: 4) {
+                        Text(name)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "8a91a0"))
+                        if msg.fromBot == true {
+                            Text("BOT")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(hex: "2563eb"))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.white)
+                                .cornerRadius(3)
+                        }
+                    }
+                }
+                messageBubble(msg, isMe: isMe)
+            }
+
+            if isMe {
+                AvatarView(name: appState.currentUser?.username ?? "我", avatarURL: appState.currentUser?.avatar, size: 36,
+                           gradient: Gradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")]))
+            }
+            if !isMe { Spacer(minLength: 40) }
+        }
+        .contentShape(Rectangle())
+        .onLongPressGesture {
+            contextMenuMessage = msg
+        }
+    }
+
+    private func messageBubble(_ msg: ChatMessage, isMe: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !msg.content.isEmpty {
+                Text(msg.content)
+                    .font(.system(size: 15))
+                    .foregroundColor(isMe ? Color(hex: "062") : .white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let images = msg.images, !images.isEmpty {
+                messageImages(images, isMe: isMe)
+            }
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 9)
+        .background(isMe ? Color(hex: "07c160") : Color(hex: "262c38"))
+        .cornerRadius(10)
+    }
+
+    private func messageImages(_ images: [String], isMe: Bool) -> some View {
+        let columns = images.count == 1 ? [GridItem(.flexible())] :
+                      images.count == 2 ? [GridItem(.flexible()), GridItem(.flexible())] :
+                      [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+        return LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(Array(images.enumerated()), id: \.offset) { _, imgPath in
+                let url = imgPath.hasPrefix("http") ? imgPath : ServerConfig.shared.baseURL + imgPath
+                Button {
+                    previewImageURL = url
+                } label: {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            Color.gray.frame(width: 80, height: 80)
+                        }
+                    }
+                    .frame(width: images.count == 1 ? 160 : 70, height: images.count == 1 ? 160 : 70)
+                    .clipped()
+                    .cornerRadius(6)
+                }
+            }
+        }
+        .frame(maxWidth: images.count == 1 ? 160 : 220)
+    }
+
+    // MARK: - Draft Images
+    private var draftImagesView: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(draftImages.enumerated()), id: \.offset) { idx, img in
+                ZStack(alignment: .topTrailing) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 56, height: 56)
+                        .clipped()
+                        .cornerRadius(8)
+                    Button {
+                        draftImages.remove(at: idx)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.white)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Circle())
+                    }
+                    .offset(x: 4, y: -4)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(hex: "161a22"))
+    }
+
+    // MARK: - Input Bar
+    private var inputBar: some View {
+        HStack(spacing: 10) {
+            Button { showImagePicker = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Color(hex: "1c212b"))
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "262c38"), lineWidth: 1))
+            }
+
+            TextField("输入消息，Enter发送", text: $messageText, axis: .vertical)
+                .lineLimit(1...4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(hex: "0f1117"))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "262c38"), lineWidth: 1))
+                .foregroundColor(.white)
+                .onSubmit { sendMessage() }
+
+            Button { sendMessage() } label: {
+                Text("发送")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color(hex: "062"))
+                    .padding(.horizontal, 18)
+                    .frame(height: 42)
+                    .background(Color(hex: "07c160"))
+                    .cornerRadius(8)
+            }
+            .disabled(messageText.isEmpty && draftImages.isEmpty)
+            .opacity(messageText.isEmpty && draftImages.isEmpty ? 0.5 : 1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(hex: "161a22"))
+        .overlay(Rectangle().frame(height: 1).foregroundColor(Color(hex: "262c38")), alignment: .top)
+    }
+
+    private func sendMessage() {
+        let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty || !draftImages.isEmpty else { return }
+
+        if !draftImages.isEmpty {
+            // 上传图片
+            Task {
+                var uploadedURLs: [String] = []
+                for img in draftImages {
+                    if let data = img.jpegData(compressionQuality: 0.8),
+                       let token = appState.token {
+                        do {
+                            let url = try await api.uploadMessageImage(token: token, imageData: data)
+                            uploadedURLs.append(url)
+                        } catch {
+                            chatVM.showToast("图片上传失败: \(error.localizedDescription)")
+                        }
+                    }
+                }
+                await MainActor.run {
+                    chatVM.sendMessage(text, images: uploadedURLs)
+                    messageText = ""
+                    draftImages.removeAll()
+                }
+            }
+        } else {
+            chatVM.sendMessage(text)
+            messageText = ""
+        }
+    }
+}
+
+// MARK: - Image Preview
+struct ImagePreviewURL: Identifiable {
+    let url: String
+    var id: String { url }
+}
+
+struct ImagePreviewView: View {
+    let url: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            AsyncImage(url: URL(string: url)) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().aspectRatio(contentMode: .fit)
+                default:
+                    ProgressView()
+                }
+            }
+        }
+        .onTapGesture { dismiss() }
+    }
+}

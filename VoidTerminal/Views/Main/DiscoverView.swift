@@ -1,0 +1,77 @@
+import SwiftUI
+
+struct DiscoverView: View {
+    @Binding var showMoments: Bool
+    @State private var showTomatoWarning = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(hex: "0f1117").ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("发现")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 10)
+
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            discoverItem(icon: "朋", label: "朋友圈") {
+                                withAnimation { showMoments = true }
+                            }
+
+                            discoverItem(icon: "书", label: "看番茄小说") {
+                                showTomatoWarning = true
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                    }
+                }
+            }
+            .navigationBarHidden(true)
+            .alert("警告", isPresented: $showTomatoWarning) {
+                Button("我确认") {
+                    // 打开番茄小说网站
+                    if let url = URL(string: "http://buer.kdns.fr") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("您将进入本站的同级网站，此站专注于看番茄小说和下载小说文件。账号密码并不同步，当您第一次进入时，请务必重新注册一个新账号。")
+            }
+        }
+    }
+
+    private func discoverItem(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(LinearGradient(colors: [Color(hex: "3b82f6"), Color(hex: "8b5cf6")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Text(icon)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 40, height: 40)
+                Text(label)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(Color(hex: "8a91a0"))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color(hex: "161a22"))
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+}

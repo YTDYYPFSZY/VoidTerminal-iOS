@@ -18,6 +18,7 @@ struct ChatView: View {
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showMentionPanel = false
     @State private var mentionSearchText = ""
+    @FocusState private var isInputFocused: Bool
 
     private let api = APIService.shared
 

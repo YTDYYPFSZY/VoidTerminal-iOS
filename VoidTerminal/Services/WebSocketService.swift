@@ -371,7 +371,9 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             self.connect(token: token)
         }
     }
-}import Foundation
+}
+
+import Foundation
 
 final class AppLogger {
     static let shared = AppLogger()

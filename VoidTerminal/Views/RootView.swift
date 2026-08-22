@@ -19,7 +19,7 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .fontSizeChanged)) { _ in
             fontTick += 1
         }
-        .onChange(of: appState.currentUser) { _, newUser in
+        .onChange(of: appState.currentUser) { newUser in
             if let user = newUser {
                 chatVM.setCurrentUserId(user.id)
             }

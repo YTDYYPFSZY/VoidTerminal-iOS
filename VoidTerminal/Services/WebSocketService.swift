@@ -8,6 +8,10 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     private var session: URLSession!
     private var isConnected = false
     private var token: String?
+    private var reconnectAttempts = 0
+    private var reconnectTimer: Timer?
+    private var heartbeatTimer: Timer?
+    private var isManualDisconnect = false
 
     // 回调
     var onHello: ((HelloMessage) -> Void)?
@@ -42,6 +46,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: - Connection
     func connect(token: String) {
+        isManualDisconnect = false
+        reconnectAttempts = 0
         if task != nil { disconnect() }
         self.token = token
         guard let url = URL(string: ServerConfig.shared.wsURL) else { return }
@@ -51,10 +57,16 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         receive()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.sendAuth()
+                self?.startHeartbeat()
         }
     }
 
     func disconnect() {
+        isManualDisconnect = true
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
         task?.cancel()
         task = nil
         isConnected = false
@@ -200,6 +212,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                 self.receive()
             case .failure:
                 self.isConnected = false
+                self.heartbeatTimer?.invalidate()
+                self.scheduleReconnect()
                 self.onDisconnect?()
             }
         }
@@ -326,3 +340,30 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         onDisconnect?()
     }
 }
+
+    // MARK: - Heartbeat
+    private func startHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) { [weak self] _ in
+            self?.sendPing()
+        }
+    }
+    private func sendPing() {
+        task?.sendPing { error in
+            if let error = error {
+                print("WS ping error: \(error)")
+            }
+        }
+    }
+    // MARK: - Reconnect
+    private func scheduleReconnect() {
+        guard !isManualDisconnect, let token = token else { return }
+        reconnectAttempts += 1
+        let delay = min(Double(reconnectAttempts) * 2, 15)
+        print("WS reconnect scheduled in \(delay)s (attempt \(reconnectAttempts))")
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self = self, !self.isManualDisconnect else { return }
+            self.connect(token: token)
+        }
+    }

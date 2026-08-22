@@ -17,6 +17,7 @@ final class ChatViewModel: ObservableObject {
 
     private let ws = WebSocketService.shared
     private let api = APIService.shared
+    private var currentUserName: String = "我"
 
     enum RoomType: Hashable {
         case global
@@ -26,6 +27,39 @@ final class ChatViewModel: ObservableObject {
 
     init() {
         setupCallbacks()
+        loadFromLocal()
+    }
+    
+    // MARK: - Local Persistence
+    private func loadFromLocal() {
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: "vt_friends"),
+           let list = try? JSONDecoder().decode([User].self, from: data) {
+            friends = list
+        }
+        if let data = defaults.data(forKey: "vt_groups"),
+           let list = try? JSONDecoder().decode([ChatGroup].self, from: data) {
+            groups = list
+        }
+        if let data = defaults.data(forKey: "vt_global_msgs"),
+           let list = try? JSONDecoder().decode([ChatMessage].self, from: data) {
+            globalMessages = list
+        }
+        if let uid = defaults.string(forKey: "vt_current_uid") {
+            setCurrentUserId(uid)
+        }
+    }
+    private func saveToLocal() {
+        let defaults = UserDefaults.standard
+        if let data = try? JSONEncoder().encode(friends) {
+            defaults.set(data, forKey: "vt_friends")
+        }
+        if let data = try? JSONEncoder().encode(groups) {
+            defaults.set(data, forKey: "vt_groups")
+        }
+        if let data = try? JSONEncoder().encode(globalMessages) {
+            defaults.set(data, forKey: "vt_global_msgs")
+        }
     }
 
     private func setupCallbacks() {
@@ -36,11 +70,19 @@ final class ChatViewModel: ObservableObject {
         }
         ws.onGlobalMessage = { [weak self] msg in
             Task { @MainActor in
+                guard let self = self else { return }
                 var m = msg
-                m.isFromMe = (m.from == self?.currentUserId)
-                self?.globalMessages.append(m)
-                if self?.globalMessages.count ?? 0 > 500 {
-                    self?.globalMessages = Array(self?.globalMessages.suffix(500) ?? [])
+                m.isFromMe = (m.from == self.currentUserId)
+                // 去重：替换临时消息
+                if let idx = self.globalMessages.firstIndex(where: {
+                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
+                }) {
+                    self.globalMessages[idx] = m
+                } else {
+                    self.globalMessages.append(m)
+                }
+                if self.globalMessages.count > 500 {
+                    self.globalMessages = Array(self.globalMessages.suffix(500))
                 }
             }
         }
@@ -52,7 +94,14 @@ final class ChatViewModel: ObservableObject {
                 let peer = m.from == self.currentUserId ? (m.to ?? "") : m.from
                 let key = self.dmRoomKey(self.currentUserId, peer)
                 if self.dmMessages[key] == nil { self.dmMessages[key] = [] }
-                self.dmMessages[key]?.append(m)
+                // 去重：替换临时消息
+                if let idx = self.dmMessages[key]?.firstIndex(where: {
+                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
+                }) {
+                    self.dmMessages[key]?[idx] = m
+                } else {
+                    self.dmMessages[key]?.append(m)
+                }
             }
         }
         ws.onGroupMessage = { [weak self] msg in
@@ -61,7 +110,14 @@ final class ChatViewModel: ObservableObject {
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
                 if self.groupMessages[gid] == nil { self.groupMessages[gid] = [] }
-                self.groupMessages[gid]?.append(m)
+                // 去重：替换临时消息
+                if let idx = self.groupMessages[gid]?.firstIndex(where: {
+                    $0.id.hasPrefix("temp_") && $0.from == m.from && $0.content == m.content
+                }) {
+                    self.groupMessages[gid]?[idx] = m
+                } else {
+                    self.groupMessages[gid]?.append(m)
+                }
             }
         }
         ws.onRecalled = { [weak self] room, id, to, gid in
@@ -108,7 +164,10 @@ final class ChatViewModel: ObservableObject {
             }
         }
         ws.onFriendUpdate = { [weak self] list in
-            Task { @MainActor in self?.friends = list }
+            Task { @MainActor in
+                self?.friends = list
+                self?.saveToLocal()
+            }
         }
         ws.onRequestSent = { [weak self] ok, error in
             Task { @MainActor in
@@ -174,6 +233,7 @@ final class ChatViewModel: ObservableObject {
 
     private func handleHello(_ msg: HelloMessage) {
         if let user = msg.selfUser {
+            currentUserName = user.username
             setCurrentUserId(user.id)
         }
         globalMessages = (msg.globalMsgs ?? []).map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
@@ -202,6 +262,7 @@ final class ChatViewModel: ObservableObject {
                 if dmMessages[key] == nil { dmMessages[key] = [] }
             }
         }
+        saveToLocal()
     }
 
     func dmRoomKey(_ a: String, _ b: String) -> String {
@@ -218,12 +279,31 @@ final class ChatViewModel: ObservableObject {
 
     func sendMessage(_ text: String, images: [String] = []) {
         guard let room = currentRoom, !text.isEmpty || !images.isEmpty else { return }
+        let tempId = "temp_" + UUID().uuidString
+        let now = Int(Date().timeIntervalSince1970 * 1000)
+        var tempMsg = ChatMessage(
+            id: tempId, from: currentUserId,
+            fromName: currentUserName, content: text,
+            images: images.isEmpty ? nil : images,
+            time: now,
+            to: nil, gid: nil
+        )
+        tempMsg.isFromMe = true
         switch room {
         case .global:
+            globalMessages.append(tempMsg)
+            if globalMessages.count > 500 { globalMessages = Array(globalMessages.suffix(500)) }
             ws.sendGlobal(content: text, images: images)
         case .dm(let peerId, _):
+            tempMsg.to = peerId
+            let key = dmRoomKey(currentUserId, peerId)
+            if dmMessages[key] == nil { dmMessages[key] = [] }
+            dmMessages[key]?.append(tempMsg)
             ws.sendDM(to: peerId, content: text, images: images)
         case .group(let gid, _):
+            tempMsg.gid = gid
+            if groupMessages[gid] == nil { groupMessages[gid] = [] }
+            groupMessages[gid]?.append(tempMsg)
             ws.sendGroup(gid: gid, content: text, images: images)
         }
     }

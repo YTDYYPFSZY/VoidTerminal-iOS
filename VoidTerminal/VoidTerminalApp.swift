@@ -47,6 +47,16 @@ final class AppState: ObservableObject {
            let t = Theme(rawValue: themeStr) { self.theme = t }
         if let fontStr = UserDefaults.standard.string(forKey: "vt_font"),
            let f = FontSize(rawValue: fontStr) { self.fontSize = f }
+        // 监听WebSocket推送的状态更新
+        NotificationCenter.default.addObserver(forName: .adminStatusUpdate, object: nil, queue: .main) { [weak self] notif in
+            self?.isAdmin = notif.object as? Bool ?? false
+        }
+        NotificationCenter.default.addObserver(forName: .hallRenamed, object: nil, queue: .main) { [weak self] notif in
+            if let name = notif.object as? String { self?.hallName = name }
+        }
+        NotificationCenter.default.addObserver(forName: .maxOnlineUpdate, object: nil, queue: .main) { [weak self] notif in
+            self?.maxOnline = notif.object as? Int ?? 0
+        }
     }
 
     func restoreSession() async {

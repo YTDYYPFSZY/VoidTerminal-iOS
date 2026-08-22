@@ -12,8 +12,8 @@ struct DiscoverView: View {
                 VStack(spacing: 0) {
                     HStack {
                         Text("发现")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.vt(size: 22, weight: .bold))
+                            .foregroundColor(.vtText)
                         Spacer()
                     }
                     .padding(.horizontal, 16)
@@ -55,13 +55,13 @@ struct DiscoverView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(LinearGradient(colors: [Color(hex: "3b82f6"), Color(hex: "8b5cf6")], startPoint: .topLeading, endPoint: .bottomTrailing))
                     Text(icon)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 18, weight: .bold))
+                        .foregroundColor(.vtText)
                 }
                 .frame(width: 40, height: 40)
                 Text(label)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 16, weight: .medium))
+                    .foregroundColor(.vtText)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundColor(Color.vtTextDim)

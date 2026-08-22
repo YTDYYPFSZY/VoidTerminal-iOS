@@ -57,7 +57,7 @@ struct ChatView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
                 }
-                .onAppear { scrollProxy = proxy }
+                .onAppear { scrollProxy = proxy; chatVM.currentRoom = room }
                 .onChange(of: messages.count) { _ in
                     if let last = messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -138,7 +138,7 @@ struct ChatView: View {
                 LazyVStack(spacing: 0) {
                     if filteredMentionUsers.isEmpty {
                         Text("无匹配用户")
-                            .font(.system(size: 14))
+                            .font(.vt(size: 14))
                             .foregroundColor(Color.vtTextDim)
                             .padding()
                     } else {
@@ -149,8 +149,8 @@ struct ChatView: View {
                                 HStack(spacing: 10) {
                                     AvatarView(name: user.username, avatarURL: user.avatar, size: 32)
                                     Text(user.username)
-                                        .font(.system(size: 15))
-                                        .foregroundColor(.white)
+                                        .font(.vt(size: 15))
+                                        .foregroundColor(.vtText)
                                     Spacer()
                                 }
                                 .padding(.horizontal, 16)
@@ -200,18 +200,18 @@ struct ChatView: View {
         HStack(spacing: 10) {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 20, weight: .semibold))
+                    .foregroundColor(.vtText)
                     .padding(.horizontal, 8)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(roomTitle)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 16, weight: .semibold))
+                    .foregroundColor(.vtText)
                     .lineLimit(1)
                 if let sub = roomSubtitle {
                     Text(sub)
-                        .font(.system(size: 12))
+                        .font(.vt(size: 12))
                         .foregroundColor(Color.vtTextDim)
                 }
             }
@@ -219,7 +219,7 @@ struct ChatView: View {
             if case .group = room {
                 Button { showGroupSettings = true } label: {
                     Image(systemName: "gearshape.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(.vtText)
                         .padding(8)
                 }
             }
@@ -270,11 +270,11 @@ struct ChatView: View {
                 if !isMe, let name = msg.fromName, case .group = room {
                     HStack(spacing: 4) {
                         Text(name)
-                            .font(.system(size: 12))
+                            .font(.vt(size: 12))
                             .foregroundColor(Color.vtTextDim)
                         if msg.fromBot == true {
                             Text("BOT")
-                                .font(.system(size: 9, weight: .bold))
+                                .font(.vt(size: 9, weight: .bold))
                                 .foregroundColor(Color(hex: "2563eb"))
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
@@ -318,13 +318,13 @@ struct ChatView: View {
 
         let pattern = "@([\\w\\u4e00-\\u9fa5]+)"
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return Text(text).font(.system(size: 15)).foregroundColor(normalColor).fixedSize(horizontal: false, vertical: true)
+            return Text(text).font(.vt(size: 15)).foregroundColor(normalColor).fixedSize(horizontal: false, vertical: true)
         }
 
         let nsText = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
 
-        var result = Text("").font(.system(size: 15))
+        var result = Text("").font(.vt(size: 15))
         var lastEnd = 0
 
         for match in matches {
@@ -385,7 +385,7 @@ struct ChatView: View {
                         draftImages.remove(at: idx)
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white)
+                            .foregroundColor(.vtText)
                             .background(Color.black.opacity(0.6))
                             .clipShape(Circle())
                     }
@@ -403,8 +403,8 @@ struct ChatView: View {
         HStack(spacing: 10) {
             Button { showImagePicker = true } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 18, weight: .semibold))
+                    .foregroundColor(.vtText)
                     .frame(width: 42, height: 42)
                     .background(Color.vtPanel2)
                     .cornerRadius(8)
@@ -421,12 +421,12 @@ struct ChatView: View {
                 .background(Color.vtBG)
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.vtBorder, lineWidth: 1))
-                .foregroundColor(.white)
+                .foregroundColor(.vtText)
                 .onSubmit { sendMessage() }
 
             Button { sendMessage() } label: {
                 Text("发送")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.vt(size: 15, weight: .semibold))
                     .foregroundColor(Color(hex: "062"))
                     .padding(.horizontal, 18)
                     .frame(height: 42)

@@ -30,11 +30,11 @@ struct AuthView: View {
                 // Logo
                 VStack(spacing: 8) {
                     Text("虚空终端")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 30, weight: .bold))
+                        .foregroundColor(.vtText)
                         .tracking(2)
                     Text("简约 · 轻量 · 随时聊天")
-                        .font(.system(size: 14))
+                        .font(.vt(size: 14))
                         .foregroundColor(Color.vtTextDim)
                 }
                 .padding(.bottom, 28)
@@ -73,7 +73,7 @@ struct AuthView: View {
                 .padding(.horizontal, 20)
 
                 Text("无需手机号与实名，注册即可开聊")
-                    .font(.system(size: 12))
+                    .font(.vt(size: 12))
                     .foregroundColor(Color.vtTextDim)
                     .padding(.top, 18)
 
@@ -84,7 +84,7 @@ struct AuthView: View {
                     showServerConfig = true
                 } label: {
                     Text("服务器设置")
-                        .font(.system(size: 12))
+                        .font(.vt(size: 12))
                         .foregroundColor(Color.vtTextDim)
                 }
                 .padding(.bottom, 20)
@@ -116,7 +116,7 @@ struct AuthView: View {
 
             if !message.isEmpty {
                 Text(message)
-                    .font(.system(size: 13))
+                    .font(.vt(size: 13))
                     .foregroundColor(Color(hex: "e5484d"))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -133,7 +133,7 @@ struct AuthView: View {
 
             if !message.isEmpty {
                 Text(message)
-                    .font(.system(size: 13))
+                    .font(.vt(size: 13))
                     .foregroundColor(Color(hex: "e5484d"))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -141,7 +141,7 @@ struct AuthView: View {
             PrimaryButton(title: isLoading ? "注册中..." : "注 册", action: doRegister, isDisabled: isLoading)
 
             Text("本站不支持找回密码，请妥善保管自己的密码。")
-                .font(.system(size: 12))
+                .font(.vt(size: 12))
                 .foregroundColor(Color.vtTextDim)
                 .multilineTextAlignment(.center)
         }

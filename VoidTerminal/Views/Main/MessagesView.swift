@@ -16,8 +16,8 @@ struct MessagesView: View {
                     // 标题
                     HStack {
                         Text("消息")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.vt(size: 22, weight: .bold))
+                            .foregroundColor(.vtText)
                         Spacer()
                     }
                     .padding(.horizontal, 16)
@@ -29,7 +29,7 @@ struct MessagesView: View {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(Color.vtTextDim)
                         TextField("搜索会话", text: $searchText)
-                            .foregroundColor(.white)
+                            .foregroundColor(.vtText)
                             .autocapitalization(.none)
                     }
                     .padding(.horizontal, 12)
@@ -49,7 +49,7 @@ struct MessagesView: View {
                                         RoundedRectangle(cornerRadius: 10)
                                             .fill(LinearGradient(colors: [Color(hex: "07c160"), Color(hex: "0ea5e9")], startPoint: .topLeading, endPoint: .bottomTrailing))
                                         Image(systemName: "globe.asia.australia.fill")
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.vtText)
                                     }
                                     .frame(width: 44, height: 44)
                                 ),
@@ -68,7 +68,7 @@ struct MessagesView: View {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 10)
                                                 .fill(LinearGradient(colors: [Color(hex: "07c160"), Color(hex: "3b82f6")], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                            Text("验").font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+                                            Text("验").font(.vt(size: 16, weight: .semibold)).foregroundColor(.vtText)
                                         }
                                         .frame(width: 44, height: 44)
                                     ),
@@ -155,7 +155,7 @@ struct MessagesView: View {
     private func sectionHeader(_ text: String) -> some View {
         HStack {
             Text(text)
-                .font(.system(size: 12))
+                .font(.vt(size: 12))
                 .foregroundColor(Color.vtTextDim)
             Spacer()
         }
@@ -171,8 +171,8 @@ struct MessagesView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack {
                         Text(name)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white)
+                            .font(.vt(size: 15, weight: .medium))
+                            .foregroundColor(.vtText)
                             .lineLimit(1)
                         if showOnline {
                             Circle().fill(Color(hex: "07c160")).frame(width: 6, height: 6)
@@ -180,8 +180,8 @@ struct MessagesView: View {
                         Spacer()
                         if unread > 0 {
                             Text("\(unread)")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white)
+                                .font(.vt(size: 11))
+                                .foregroundColor(.vtText)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(Color(hex: "e5484d"))
@@ -189,7 +189,7 @@ struct MessagesView: View {
                         }
                     }
                     Text(preview)
-                        .font(.system(size: 12))
+                        .font(.vt(size: 12))
                         .foregroundColor(Color.vtTextDim)
                         .lineLimit(1)
                 }

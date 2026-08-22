@@ -32,7 +32,7 @@ struct AvatarView: View {
                 .fill(LinearGradient(gradient: gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
             Text(String(name.prefix(1)))
                 .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(.vtText)
         }
         .frame(width: size, height: size)
     }
@@ -43,8 +43,8 @@ struct ToastView: View {
     let message: String
     var body: some View {
         Text(message)
-            .font(.system(size: 14))
-            .foregroundColor(.white)
+            .font(.vt(size: 14))
+            .foregroundColor(.vtText)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .background(Color.black.opacity(0.8))
@@ -97,7 +97,7 @@ struct PrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.vt(size: 15, weight: .semibold))
                 .foregroundColor(Color(hex: "062"))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -130,7 +130,7 @@ struct AppTextField: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.vtBorder, lineWidth: 1)
         )
-        .foregroundColor(.white)
+        .foregroundColor(.vtText)
         .autocapitalization(.none)
         .disableAutocorrection(true)
     }

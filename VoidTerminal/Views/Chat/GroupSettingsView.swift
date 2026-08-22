@@ -29,10 +29,10 @@ struct GroupSettingsView: View {
                         }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(group.name)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.white)
+                                .font(.vt(size: 17, weight: .semibold))
+                                .foregroundColor(.vtText)
                             Text("\(group.members.count) 人")
-                                .font(.system(size: 13))
+                                .font(.vt(size: 13))
                                 .foregroundColor(Color.vtTextDim)
                         }
                         Spacer()
@@ -46,11 +46,11 @@ struct GroupSettingsView: View {
                             HStack {
                                 AvatarView(name: member.username, avatarURL: member.avatar, size: 36)
                                 Text(member.username)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.vtText)
                                 if memberId == group.owner {
                                     Text("群主")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.white)
+                                        .font(.vt(size: 10, weight: .semibold))
+                                        .foregroundColor(.vtText)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(LinearGradient(colors: [Color(hex: "07c160"), Color(hex: "0ea5e9")], startPoint: .leading, endPoint: .trailing))
@@ -78,14 +78,14 @@ struct GroupSettingsView: View {
                             showRename = true
                         } label: {
                             Text("修改群名称")
-                                .foregroundColor(.white)
+                                .foregroundColor(.vtText)
                         }
 
                         Button {
                             showAddMembers = true
                         } label: {
                             Text("添加成员")
-                                .foregroundColor(.white)
+                                .foregroundColor(.vtText)
                         }
 
                         Button(role: .destructive) {
@@ -181,7 +181,7 @@ struct AddGroupMembersView: View {
                         } label: {
                             HStack {
                                 AvatarView(name: friend.username, avatarURL: friend.avatar, size: 36)
-                                Text(friend.username).foregroundColor(.white)
+                                Text(friend.username).foregroundColor(.vtText)
                                 Spacer()
                                 if selected.contains(friend.id) {
                                     Image(systemName: "checkmark.circle.fill")

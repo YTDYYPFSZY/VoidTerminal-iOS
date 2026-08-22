@@ -18,18 +18,18 @@ struct MomentsView: View {
                     withAnimation { isPresented = false }
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 20, weight: .semibold))
+                        .foregroundColor(.vtText)
                         .padding(.horizontal, 8)
                 }
                 Text("朋友圈")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 16, weight: .semibold))
+                    .foregroundColor(.vtText)
                 Spacer()
                 Button { showPostMoment = true } label: {
                     Image(systemName: "square.and.pencil")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 18, weight: .semibold))
+                        .foregroundColor(.vtText)
                         .padding(8)
                 }
             }
@@ -44,10 +44,10 @@ struct MomentsView: View {
                     if chatVM.moments.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "camera.on.rectangle")
-                                .font(.system(size: 40))
+                                .font(.vt(size: 40))
                                 .foregroundColor(Color.vtTextDim)
                             Text("还没有朋友圈内容")
-                                .font(.system(size: 14))
+                                .font(.vt(size: 14))
                                 .foregroundColor(Color.vtTextDim)
                         }
                         .padding(.top, 60)
@@ -101,10 +101,10 @@ struct MomentsView: View {
                 AvatarView(name: authorName, avatarURL: authorAvatar, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(authorName)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 15, weight: .semibold))
+                        .foregroundColor(.vtText)
                     Text(timeAgo(moment.time))
-                        .font(.system(size: 11))
+                        .font(.vt(size: 11))
                         .foregroundColor(Color.vtTextDim)
                 }
                 Spacer()
@@ -112,8 +112,8 @@ struct MomentsView: View {
 
             if !moment.text.isEmpty {
                 Text(moment.text)
-                    .font(.system(size: 15))
-                    .foregroundColor(.white)
+                    .font(.vt(size: 15))
+                    .foregroundColor(.vtText)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -130,7 +130,7 @@ struct MomentsView: View {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .foregroundColor(isLiked ? Color(hex: "07c160") : Color.vtTextDim)
                         Text("\(moment.likes.count)")
-                            .font(.system(size: 13))
+                            .font(.vt(size: 13))
                             .foregroundColor(Color.vtTextDim)
                     }
                 }
@@ -142,7 +142,7 @@ struct MomentsView: View {
                         Image(systemName: "bubble.right")
                             .foregroundColor(Color.vtTextDim)
                         Text("\(moment.comments.count)")
-                            .font(.system(size: 13))
+                            .font(.vt(size: 13))
                             .foregroundColor(Color.vtTextDim)
                     }
                 }
@@ -165,18 +165,18 @@ struct MomentsView: View {
                     ForEach(moment.comments) { comment in
                         HStack(alignment: .top, spacing: 4) {
                             Text(comment.userName ?? comment.user)
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.vt(size: 13, weight: .semibold))
                                 .foregroundColor(Color(hex: "07c160"))
                             Text(comment.text)
-                                .font(.system(size: 13))
-                                .foregroundColor(.white)
+                                .font(.vt(size: 13))
+                                .foregroundColor(.vtText)
                             Spacer()
                             if comment.user == chatVM.currentUserId || isMyMoment {
                                 Button {
                                     WebSocketService.shared.momentCommentDelete(momentId: moment.id, commentId: comment.id)
                                 } label: {
                                     Image(systemName: "xmark")
-                                        .font(.system(size: 10))
+                                        .font(.vt(size: 10))
                                         .foregroundColor(Color.vtTextDim)
                                 }
                             }
@@ -255,7 +255,7 @@ struct PostMomentView: View {
                 Section {
                     TextEditor(text: $text)
                         .frame(minHeight: 100)
-                        .foregroundColor(.white)
+                        .foregroundColor(.vtText)
                         .onChange(of: text) { v in
                             if v.count > 2000 { text = String(v.prefix(2000)) }
                         }
@@ -279,7 +279,7 @@ struct PostMomentView: View {
                                             images.remove(at: idx)
                                         } label: {
                                             Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.white)
+                                                .foregroundColor(.vtText)
                                                 .background(Color.black.opacity(0.6))
                                                 .clipShape(Circle())
                                         }

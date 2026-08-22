@@ -23,8 +23,8 @@ struct ProfileView: View {
                         // 标题
                         HStack {
                             Text("我的")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(.white)
+                                .font(.vt(size: 22, weight: .bold))
+                                .foregroundColor(.vtText)
                             Spacer()
                         }
                         .padding(.horizontal, 16)
@@ -44,8 +44,8 @@ struct ProfileView: View {
                                             .fill(Color(hex: "07c160"))
                                             .frame(width: 20, height: 20)
                                         Image(systemName: "camera.fill")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.white)
+                                            .font(.vt(size: 10))
+                                            .foregroundColor(.vtText)
                                     }
                                     .offset(x: 4, y: 4)
                                 }
@@ -53,12 +53,12 @@ struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text(appState.currentUser?.username ?? "")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundColor(.white)
+                                        .font(.vt(size: 17, weight: .semibold))
+                                        .foregroundColor(.vtText)
                                     if appState.isAdmin {
                                         Text("站长")
-                                            .font(.system(size: 10, weight: .semibold))
-                                            .foregroundColor(.white)
+                                            .font(.vt(size: 10, weight: .semibold))
+                                            .foregroundColor(.vtText)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 3)
                                             .background(LinearGradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")], startPoint: .leading, endPoint: .trailing))
@@ -66,7 +66,7 @@ struct ProfileView: View {
                                     }
                                 }
                                 Text("在线")
-                                    .font(.system(size: 12))
+                                    .font(.vt(size: 12))
                                     .foregroundColor(Color(hex: "07c160"))
                             }
                             Spacer()
@@ -100,7 +100,7 @@ struct ProfileView: View {
                                 appState.logout()
                             } label: {
                                 Text("退出登录")
-                                    .font(.system(size: 15))
+                                    .font(.vt(size: 15))
                                     .foregroundColor(Color(hex: "e5484d"))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
@@ -142,12 +142,12 @@ struct ProfileView: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(.system(size: 15))
+                    .font(.vt(size: 15))
                     .foregroundColor(isAdmin ? .white : .white)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundColor(Color.vtTextDim)
-                    .font(.system(size: 12))
+                    .font(.vt(size: 12))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -272,7 +272,7 @@ struct FontSizeView: View {
                             dismiss()
                         } label: {
                             HStack {
-                                Text(name).foregroundColor(.white)
+                                Text(name).foregroundColor(.vtText)
                                 Spacer()
                                 if appState.fontSize.rawValue == raw {
                                     Image(systemName: "checkmark").foregroundColor(Color(hex: "07c160"))

@@ -16,8 +16,8 @@ struct ContactsView: View {
                         // 标题
                         HStack {
                             Text("通讯录")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(.white)
+                                .font(.vt(size: 22, weight: .bold))
+                                .foregroundColor(.vtText)
                             Spacer()
                         }
                         .padding(.horizontal, 16)
@@ -109,7 +109,7 @@ struct ContactsView: View {
     private func sectionHeader(_ text: String) -> some View {
         HStack {
             Text(text)
-                .font(.system(size: 12))
+                .font(.vt(size: 12))
                 .foregroundColor(Color.vtTextDim)
             Spacer()
         }
@@ -124,18 +124,18 @@ struct ContactsView: View {
                 avatar
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 15, weight: .medium))
+                        .foregroundColor(.vtText)
                     if let subtitle = subtitle {
                         Text(subtitle)
-                            .font(.system(size: 12))
+                            .font(.vt(size: 12))
                             .foregroundColor(showOnline ? Color(hex: "07c160") : Color.vtTextDim)
                     }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundColor(Color.vtTextDim)
-                    .font(.system(size: 12))
+                    .font(.vt(size: 12))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -150,16 +150,16 @@ struct ContactsView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text(icon).font(.system(size: 18, weight: .semibold)).foregroundColor(.white)
+                    Text(icon).font(.vt(size: 18, weight: .semibold)).foregroundColor(.vtText)
                 }
                 .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white)
+                        .font(.vt(size: 15, weight: .medium))
+                        .foregroundColor(.vtText)
                     if let subtitle = subtitle {
                         Text(subtitle)
-                            .font(.system(size: 12))
+                            .font(.vt(size: 12))
                             .foregroundColor(Color.vtTextDim)
                     }
                 }
@@ -236,7 +236,7 @@ struct CreateGroupView: View {
                         } label: {
                             HStack {
                                 AvatarView(name: friend.username, avatarURL: friend.avatar, size: 32)
-                                Text(friend.username).foregroundColor(.white)
+                                Text(friend.username).foregroundColor(.vtText)
                                 Spacer()
                                 if selectedMembers.contains(friend.id) {
                                     Image(systemName: "checkmark.circle.fill")

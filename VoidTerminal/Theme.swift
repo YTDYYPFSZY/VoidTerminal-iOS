@@ -102,3 +102,19 @@ extension EnvironmentValues {
         set { self[ThemeKey.self] = newValue }
     }
 }
+
+// MARK: - Dynamic Font Size
+extension Font {
+    static func vt(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let raw = UserDefaults.standard.string(forKey: "vt_font") ?? "md"
+        let factor: CGFloat
+        switch raw {
+        case "sm": factor = 0.82
+        case "md": factor = 1.0
+        case "lg": factor = 1.18
+        case "xl": factor = 1.38
+        default: factor = 1.0
+        }
+        return .system(size: size * factor, weight: weight)
+    }
+}

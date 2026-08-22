@@ -97,6 +97,7 @@ final class ChatViewModel: ObservableObject {
                 if self.globalMessages.count > 500 {
                     self.globalMessages = Array(self.globalMessages.suffix(500))
                 }
+                self.saveToLocal()
             }
         }
         ws.onDMMessage = { [weak self] msg in

@@ -25,7 +25,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     var onBanned: ((String) -> Void)?
     var onKicked: ((String) -> Void)?
     var onSystem: ((String) -> Void)?
-    var onPresence: (([String: Bool]) -> Void)?
+    var onPresence: (([String]) -> Void)?
+    var onAnnouncementUpdate: ((String) -> Void)?
     var onFriendRequest: ((FriendRequest) -> Void)?
     var onFriendUpdate: (([User]) -> Void)?
     var onRequestRespond: ((Bool, String, String) -> Void)?
@@ -279,8 +280,13 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         case "system":
             onSystem?(dict["content"] as? String ?? "")
         case "presence":
-            if let users = dict["users"] as? [String: Bool] {
-                onPresence?(users)
+            if let online = dict["online"] as? [[String: Any]] {
+                let ids = online.compactMap { $0["id"] as? String }
+                onPresence?(ids)
+            }
+        case "announcement-update":
+            if let ann = dict["announcement"] as? String {
+                onAnnouncementUpdate?(ann)
             }
         case "friend-request":
             if let reqDict = dict["request"] as? [String: Any],

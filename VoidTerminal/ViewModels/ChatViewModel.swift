@@ -174,6 +174,18 @@ final class ChatViewModel: ObservableObject {
         ws.onSystem = { [weak self] content in
             Task { @MainActor in self?.showToast(content) }
         }
+        ws.onPresence = { [weak self] ids in
+            Task { @MainActor in
+                self?.onlineUsers = Set(ids)
+            }
+        }
+        ws.onAnnouncementUpdate = { [weak self] ann in
+            Task { @MainActor in
+                if !ann.isEmpty {
+                    self?.announcement = ann
+                }
+            }
+        }
         ws.onFriendRequest = { [weak self] req in
             Task { @MainActor in
                 if !(self?.pendingRequests.contains { $0.id == req.id } ?? false) {

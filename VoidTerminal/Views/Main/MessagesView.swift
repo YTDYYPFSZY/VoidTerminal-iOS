@@ -40,6 +40,32 @@ struct MessagesView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
 
+                    // 公告区
+                    if !chatVM.announcement.isEmpty {
+                        HStack(spacing: 10) {
+                            Image(systemName: "megaphone.fill")
+                                .foregroundColor(Color(hex: "f59e0b"))
+                                .font(.system(size: 14))
+                            Text(chatVM.announcement)
+                                .font(.vt(size: 13))
+                                .foregroundColor(.vtText)
+                                .lineLimit(1)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(hex: "f59e0b").opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(hex: "f59e0b").opacity(0.3), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                    }
+
                     // 会话列表
                     ScrollView {
                         LazyVStack(spacing: 0) {

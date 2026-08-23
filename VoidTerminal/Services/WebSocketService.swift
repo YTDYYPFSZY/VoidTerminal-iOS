@@ -12,6 +12,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     private var reconnectAttempts = 0
     private var reconnectTimer: Timer?
     private var heartbeatTimer: Timer?
+    private var connectionCheckTimer: Timer?
     private var isManualDisconnect = false
 
     // 回调
@@ -54,6 +55,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         isManualDisconnect = false
         reconnectAttempts = 0
         if task != nil { disconnect() }
+        startConnectionCheck()
         self.token = token
         guard let url = URL(string: ServerConfig.shared.wsURL) else { return }
         task = session.webSocketTask(with: url)
@@ -72,6 +74,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         reconnectTimer = nil
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
+        connectionCheckTimer?.invalidate()
+        connectionCheckTimer = nil
         task?.cancel()
         task = nil
         _isConnected = false
@@ -374,9 +378,24 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         _isConnected = false
+        heartbeatTimer?.invalidate()
+        scheduleReconnect()
         onDisconnect?()
     }
 
+
+    // MARK: - Connection Check
+    private func startConnectionCheck() {
+        connectionCheckTimer?.invalidate()
+        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            guard let self = self, !self.isManualDisconnect else { return }
+            if !self.isConnected, let token = self.token {
+                print("WS connection check: not connected, reconnecting...")
+                self.reconnectAttempts = 0
+                self.connect(token: token)
+            }
+        }
+    }
 
     // MARK: - Heartbeat
     private func startHeartbeat() {

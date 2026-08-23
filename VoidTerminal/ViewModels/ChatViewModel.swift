@@ -17,6 +17,7 @@ final class ChatViewModel: ObservableObject {
     @Published var searchResults: [SearchGroup] = []
     @Published var groupRequests: [GroupRequest] = []
     @Published var isSearching: Bool = false
+    @Published var announcement: String = ""
 
     private let ws = WebSocketService.shared
     private let api = APIService.shared
@@ -327,6 +328,9 @@ final class ChatViewModel: ObservableObject {
             }
         }
         moments = msg.moments ?? []
+        if let ann = msg.announcement, !ann.isEmpty {
+            self.announcement = ann
+        }
         if let hall = msg.hallName {
             NotificationCenter.default.post(name: .hallRenamed, object: hall)
         }

@@ -130,6 +130,10 @@ final class APIService {
             throw APIError.httpError(http.statusCode)
         }
         let result = try JSONDecoder().decode(SearchGroupResponse.self, from: data)
+        // 校验业务ok字段
+        if result.ok == false {
+            throw APIError.serverError(result.error ?? "搜索失败")
+        }
         return result.groups ?? []
     }
 }

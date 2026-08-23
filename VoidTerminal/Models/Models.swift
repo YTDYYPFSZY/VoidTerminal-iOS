@@ -211,6 +211,8 @@ struct SearchGroup: Codable, Identifiable {
 }
 
 struct SearchGroupResponse: Codable {
+    let ok: Bool?
+    let error: String?
     let groups: [SearchGroup]?
 }
 

@@ -168,19 +168,19 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     }
 
     func momentLike(momentId: String) {
-        send(["type": "moment-like", "momentId": momentId])
+        send(["type": "moment-like", "mid": momentId])
     }
 
     func momentComment(momentId: String, text: String) {
-        send(["type": "moment-comment", "momentId": momentId, "text": text])
+        send(["type": "moment-comment", "mid": momentId, "text": text])
     }
 
     func momentDelete(momentId: String) {
-        send(["type": "moment-delete", "momentId": momentId])
+        send(["type": "moment-delete", "mid": momentId])
     }
 
     func momentCommentDelete(momentId: String, commentId: String) {
-        send(["type": "moment-comment-delete", "momentId": momentId, "commentId": commentId])
+        send(["type": "moment-comment-delete", "mid": momentId, "cid": commentId])
     }
 
     // Admin

@@ -38,6 +38,10 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     var onHallRenamed: ((String) -> Void)?
     var onHallCleared: (() -> Void)?
     var onDisconnect: (() -> Void)?
+    var onGroupApplySent: ((String) -> Void)?
+    var onGroupApplyRequest: ((GroupRequest) -> Void)?
+    var onGroupApplyAccepted: ((String, ChatGroup?) -> Void)?
+    var onGroupApplyRejected: ((String) -> Void)?
 
     private override init() {
         super.init()
@@ -100,6 +104,14 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         send(dict)
     }
 
+    func sendGroupApply(gid: String) {
+        send(["type": "group-apply", "gid": gid])
+    }
+    
+    func sendGroupApplyRespond(applyId: String, action: String) {
+        send(["type": "group-apply-respond", "applyId": applyId, "action": action])
+    }
+    
     func sendGroup(gid: String, content: String, images: [String] = []) {
         var dict: [String: Any] = ["type": "group", "gid": gid, "content": content]
         if !images.isEmpty { dict["images"] = images }
@@ -315,6 +327,26 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             let gid = dict["gid"] as? String ?? ""
             let avatar = dict["avatar"] as? String ?? ""
             onGroupAvatarUpdated?(gid, avatar)
+        case "group-apply-sent":
+            let gid = dict["gid"] as? String ?? ""
+            onGroupApplySent?(gid)
+        case "group-apply-request":
+            if let aDict = dict["apply"] as? [String: Any],
+               let aData = try? JSONSerialization.data(withJSONObject: aDict),
+               let apply = try? decoder.decode(GroupRequest.self, from: aData) {
+                onGroupApplyRequest?(apply)
+            }
+        case "group-apply-accepted":
+            let gid = dict["gid"] as? String ?? ""
+            var group: ChatGroup?
+            if let gDict = dict["group"] as? [String: Any],
+               let gData = try? JSONSerialization.data(withJSONObject: gDict) {
+                group = try? decoder.decode(ChatGroup.self, from: gData)
+            }
+            onGroupApplyAccepted?(gid, group)
+        case "group-apply-rejected":
+            let gid = dict["gid"] as? String ?? ""
+            onGroupApplyRejected?(gid)
         case "moments":
             if let moments = dict["moments"] as? [[String: Any]],
                let mData = try? JSONSerialization.data(withJSONObject: moments),

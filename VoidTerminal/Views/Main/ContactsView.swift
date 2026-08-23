@@ -4,6 +4,7 @@ struct ContactsView: View {
     @EnvironmentObject var chatVM: ChatViewModel
     @State private var showAddFriend = false
     @State private var showCreateGroup = false
+    @State private var showSearchGroup = false
     @State private var activeRoom: ChatViewModel.RoomType?
 
     var body: some View {
@@ -56,6 +57,16 @@ struct ContactsView: View {
                             showCreateGroup = true
                         }
 
+                        // 搜索群聊
+                        contactRow(
+                            icon: "?",
+                            gradient: [Color(hex: "07c160"), Color(hex: "0ea5e9")],
+                            name: "搜索群聊",
+                            subtitle: nil
+                        ) {
+                            showSearchGroup = true
+                        }
+
                         // 群聊列表
                         if !chatVM.groups.isEmpty {
                             sectionHeader("群聊")
@@ -101,6 +112,10 @@ struct ContactsView: View {
             }
             .sheet(isPresented: $showCreateGroup) {
                 CreateGroupView()
+                    .environmentObject(chatVM)
+            }
+            .sheet(isPresented: $showSearchGroup) {
+                SearchGroupView()
                     .environmentObject(chatVM)
             }
         }

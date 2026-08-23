@@ -117,6 +117,23 @@ final class APIService {
     }
 }
 
+    // MARK: - 搜索群聊
+    func searchGroups(keyword: String) async throws -> [SearchGroup] {
+        let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? keyword
+        guard let url = URL(string: "\(baseURL)/api/search-groups?keyword=\(encoded)") else {
+            throw APIError.invalidResponse
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await session.data(for: request)
+        let result = try JSONDecoder().decode(SearchGroupResponse.self, from: data)
+        return result.groups ?? []
+    }
+}
+
 enum APIError: LocalizedError {
     case invalidResponse
     case httpError(Int)

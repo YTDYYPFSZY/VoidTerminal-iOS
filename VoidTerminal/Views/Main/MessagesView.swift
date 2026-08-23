@@ -6,6 +6,7 @@ struct MessagesView: View {
     @Binding var showMoments: Bool
     @State private var searchText = ""
     @State private var activeRoom: ChatViewModel.RoomType?
+    @State private var showGroupRequests = false
 
     var body: some View {
         NavigationStack {
@@ -77,6 +78,25 @@ struct MessagesView: View {
                                     unread: chatVM.pendingRequests.count
                                 ) {
                                     // 显示好友验证面板
+                                }
+                            }
+
+                            // 群申请
+                            if !chatVM.groupRequests.isEmpty {
+                                convButton(
+                                    avatar: AnyView(
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(LinearGradient(colors: [Color(hex: "f59e0b"), Color(hex: "ef4444")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            Text("群").font(.vt(size: 16, weight: .semibold)).foregroundColor(.white)
+                                        }
+                                        .frame(width: 44, height: 44)
+                                    ),
+                                    name: "群申请",
+                                    preview: "等待处理的入群申请",
+                                    unread: chatVM.groupRequests.count
+                                ) {
+                                    showGroupRequests = true
                                 }
                             }
 

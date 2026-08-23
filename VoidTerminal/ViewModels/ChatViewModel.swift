@@ -14,6 +14,9 @@ final class ChatViewModel: ObservableObject {
     @Published var onlineUsers: Set<String> = []
     @Published var toast: String?
     @Published var currentRoom: RoomType?
+    @Published var searchResults: [SearchGroup] = []
+    @Published var groupRequests: [GroupRequest] = []
+    @Published var isSearching: Bool = false
 
     private let ws = WebSocketService.shared
     private let api = APIService.shared
@@ -235,6 +238,33 @@ final class ChatViewModel: ObservableObject {
         ws.onHallCleared = { [weak self] in
             Task { @MainActor in self?.globalMessages.removeAll() }
         }
+        ws.onGroupApplySent = { [weak self] gid in
+            Task { @MainActor in
+                self?.showToast("申请已发送，请等待群主审批")
+            }
+        }
+        ws.onGroupApplyRequest = { [weak self] apply in
+            Task { @MainActor in
+                if !(self?.groupRequests.contains { $0.id == apply.id } ?? false) {
+                    self?.groupRequests.append(apply)
+                    self?.showToast("收到新的入群申请")
+                }
+            }
+        }
+        ws.onGroupApplyAccepted = { [weak self] gid, group in
+            Task { @MainActor in
+                if let group = group {
+                    self?.groups.append(group)
+                }
+                self?.showToast("你已成功加入群聊")
+                self?.saveToLocal()
+            }
+        }
+        ws.onGroupApplyRejected = { [weak self] gid in
+            Task { @MainActor in
+                self?.showToast("你的入群申请被拒绝了")
+            }
+        }
     }
 
     var currentUserId: String {
@@ -243,6 +273,38 @@ final class ChatViewModel: ObservableObject {
 
     func setCurrentUserId(_ id: String) {
         UserDefaults.standard.set(id, forKey: "vt_current_uid")
+    }
+    
+    // MARK: - 搜索群聊
+    func searchGroups(keyword: String) {
+        guard !keyword.isEmpty else {
+            searchResults = []
+            return
+        }
+        isSearching = true
+        Task {
+            do {
+                let results = try await api.searchGroups(keyword: keyword)
+                await MainActor.run {
+                    self.searchResults = results
+                    self.isSearching = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.showToast("搜索失败: \(error.localizedDescription)")
+                    self.isSearching = false
+                }
+            }
+        }
+    }
+    
+    func applyToGroup(gid: String) {
+        ws.sendGroupApply(gid: gid)
+    }
+    
+    func respondToGroupRequest(applyId: String, action: String) {
+        ws.sendGroupApplyRespond(applyId: applyId, action: action)
+        groupRequests.removeAll { $0.id == applyId }
     }
 
     private func handleHello(_ msg: HelloMessage) {

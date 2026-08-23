@@ -195,6 +195,40 @@ struct HelloMessage: Codable {
     }
 }
 
+// MARK: - 搜索群聊结果
+struct SearchGroup: Codable, Identifiable {
+    let id: String
+    let name: String
+    let owner: String?
+    let ownerName: String?
+    let memberCount: Int?
+    let avatar: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, owner, ownerName, memberCount, avatar
+    }
+}
+
+struct SearchGroupResponse: Codable {
+    let groups: [SearchGroup]?
+}
+
+// MARK: - 群申请
+struct GroupRequest: Codable, Identifiable {
+    let id: String
+    let gid: String
+    let groupName: String?
+    let from: String
+    let fromName: String?
+    let fromAvatar: String?
+    let time: Int
+    let status: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, gid, groupName, from, fromName, fromAvatar, time, status
+    }
+}
+
 // MARK: - WebSocket Message Wrapper
 struct WSMessage: Codable {
     let type: String
@@ -223,4 +257,8 @@ struct WSMessage: Codable {
     var newPassword2: String?
     var data: String? // base64 image
     var image: String?
+    // 群申请相关
+    var apply: GroupRequest?
+    var group: ChatGroup?
+    var applyId: String?
 }

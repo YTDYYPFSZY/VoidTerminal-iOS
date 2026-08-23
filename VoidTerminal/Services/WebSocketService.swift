@@ -6,7 +6,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     private var task: URLSessionWebSocketTask?
     private var session: URLSession!
-    private var isConnected = false
+    private var _isConnected = false
+    var isConnected: Bool { _isConnected }
     private var token: String?
     private var reconnectAttempts = 0
     private var reconnectTimer: Timer?
@@ -57,7 +58,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         guard let url = URL(string: ServerConfig.shared.wsURL) else { return }
         task = session.webSocketTask(with: url)
         task?.resume()
-        isConnected = true
+        _isConnected = true
         receive()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.sendAuth()
@@ -73,7 +74,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         heartbeatTimer = nil
         task?.cancel()
         task = nil
-        isConnected = false
+        _isConnected = false
         token = nil
     }
 
@@ -223,7 +224,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                 }
                 self.receive()
             case .failure:
-                self.isConnected = false
+                self._isConnected = false
                 self.heartbeatTimer?.invalidate()
                 self.scheduleReconnect()
                 self.onDisconnect?()
@@ -368,11 +369,11 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: - URLSessionWebSocketDelegate
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        isConnected = true
+        _isConnected = true
     }
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        isConnected = false
+        _isConnected = false
         onDisconnect?()
     }
 

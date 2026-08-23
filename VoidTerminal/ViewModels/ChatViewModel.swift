@@ -299,6 +299,10 @@ final class ChatViewModel: ObservableObject {
     }
     
     func applyToGroup(gid: String) {
+        guard ws.isConnected else {
+            showToast("连接未就绪，请稍后重试")
+            return
+        }
         ws.sendGroupApply(gid: gid)
     }
     

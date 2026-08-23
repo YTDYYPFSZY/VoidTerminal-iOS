@@ -115,7 +115,6 @@ final class APIService {
         }
         return try JSONDecoder().decode(T.self, from: data)
     }
-}
 
     // MARK: - 搜索群聊
     func searchGroups(keyword: String) async throws -> [SearchGroup] {

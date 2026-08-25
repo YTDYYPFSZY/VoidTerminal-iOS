@@ -100,3 +100,4 @@ WebSocket 地址会自动从 HTTP 地址推导（http→ws, https→wss）。
 
 - iOS 16.0+
 - Xcode 15.0+
+ 

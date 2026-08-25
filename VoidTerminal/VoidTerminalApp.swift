@@ -83,5 +83,7 @@ final class AppState: ObservableObject {
         token = nil
         currentUser = nil
         isAdmin = false
+        // 清服务端 session（依赖 URLSession 已存的 Cookie）
+        Task { await api.logout() }
     }
 }

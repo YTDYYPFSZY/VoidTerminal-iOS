@@ -136,6 +136,12 @@ final class APIService {
         }
         return result.groups ?? []
     }
+    
+    // MARK: - 登出
+    func logout() async {
+        // 清服务端 session，依赖 URLSession 自动保存的 Cookie
+        let _: [String: Bool]? = try? await post("/api/logout", body: [:])
+    }
 }
 
 enum APIError: LocalizedError {

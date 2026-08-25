@@ -34,50 +34,36 @@ final class ChatViewModel: ObservableObject {
         loadFromLocal()
     }
     
-    // MARK: - Local Persistence
+    // MARK: - Local Persistence (AES-GCM 加密存储)
     private func loadFromLocal() {
-        let defaults = UserDefaults.standard
-        if let data = defaults.data(forKey: "vt_friends"),
-           let list = try? JSONDecoder().decode([User].self, from: data) {
+        let storage = SecureStorage.shared
+        if let list = storage.load([User].self, forKey: "vt_friends") {
             friends = list
         }
-        if let data = defaults.data(forKey: "vt_groups"),
-           let list = try? JSONDecoder().decode([ChatGroup].self, from: data) {
+        if let list = storage.load([ChatGroup].self, forKey: "vt_groups") {
             groups = list
         }
-        if let data = defaults.data(forKey: "vt_global_msgs"),
-           let list = try? JSONDecoder().decode([ChatMessage].self, from: data) {
+        if let list = storage.load([ChatMessage].self, forKey: "vt_global_msgs") {
             globalMessages = list
         }
-        if let data = defaults.data(forKey: "vt_dm_msgs"),
-           let dict = try? JSONDecoder().decode([String: [ChatMessage]].self, from: data) {
+        if let dict = storage.load([String: [ChatMessage]].self, forKey: "vt_dm_msgs") {
             dmMessages = dict
         }
-        if let data = defaults.data(forKey: "vt_group_msgs"),
-           let dict = try? JSONDecoder().decode([String: [ChatMessage]].self, from: data) {
+        if let dict = storage.load([String: [ChatMessage]].self, forKey: "vt_group_msgs") {
             groupMessages = dict
         }
-        if let uid = defaults.string(forKey: "vt_current_uid") {
+        // vt_current_uid 不含敏感数据，继续明文存储
+        if let uid = UserDefaults.standard.string(forKey: "vt_current_uid") {
             setCurrentUserId(uid)
         }
     }
     private func saveToLocal() {
-        let defaults = UserDefaults.standard
-        if let data = try? JSONEncoder().encode(friends) {
-            defaults.set(data, forKey: "vt_friends")
-        }
-        if let data = try? JSONEncoder().encode(groups) {
-            defaults.set(data, forKey: "vt_groups")
-        }
-        if let data = try? JSONEncoder().encode(globalMessages) {
-            defaults.set(data, forKey: "vt_global_msgs")
-        }
-        if let data = try? JSONEncoder().encode(dmMessages) {
-            defaults.set(data, forKey: "vt_dm_msgs")
-        }
-        if let data = try? JSONEncoder().encode(groupMessages) {
-            defaults.set(data, forKey: "vt_group_msgs")
-        }
+        let storage = SecureStorage.shared
+        storage.save(friends, forKey: "vt_friends")
+        storage.save(groups, forKey: "vt_groups")
+        storage.save(globalMessages, forKey: "vt_global_msgs")
+        storage.save(dmMessages, forKey: "vt_dm_msgs")
+        storage.save(groupMessages, forKey: "vt_group_msgs")
     }
 
     private func setupCallbacks() {

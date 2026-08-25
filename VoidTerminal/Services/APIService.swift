@@ -4,11 +4,11 @@ import Foundation
 struct ServerConfig {
     static let shared = ServerConfig()
 
-    /// 服务器基础地址，可在设置中修改
+    /// 服务器基础地址，默认 HTTPS，可在设置中修改
     var baseURL: String {
         get {
             UserDefaults.standard.string(forKey: "vt_server_url")
-                ?? "http://buer.kdns.fr"
+                ?? "https://buer.kdns.fr"
         }
         nonmutating set {
             UserDefaults.standard.set(newValue, forKey: "vt_server_url")
@@ -22,7 +22,7 @@ struct ServerConfig {
         } else if http.hasPrefix("http://") {
             return "ws://" + http.dropFirst(7) + "/ws"
         }
-        return "ws://" + http + "/ws"
+        return "wss://" + http + "/ws"
     }
 
     func url(for path: String) -> URL {
@@ -36,11 +36,20 @@ struct ServerConfig {
 }
 
 // MARK: - API Service
-final class APIService {
+final class APIService: NSObject {
     static let shared = APIService()
-    private let session = URLSession.shared
 
-    private init() {}
+    /// 自定义 URLSession，使用 delegate 做严格证书验证
+    private let session: URLSession
+
+    private override init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        // 使用 .default 配置保留 Cookie/缓存存储（logout 依赖 Cookie）
+        self.session = URLSession(configuration: config, delegate: nil, delegateQueue: nil)
+        super.init()
+    }
 
     // MARK: - Auth
     func register(username: String, password: String) async throws -> RegisterResponse {
@@ -130,17 +139,40 @@ final class APIService {
             throw APIError.httpError(http.statusCode)
         }
         let result = try JSONDecoder().decode(SearchGroupResponse.self, from: data)
-        // 校验业务ok字段
         if result.ok == false {
             throw APIError.serverError(result.error ?? "搜索失败")
         }
         return result.groups ?? []
     }
-    
+
     // MARK: - 登出
     func logout() async {
-        // 清服务端 session，依赖 URLSession 自动保存的 Cookie
         let _: [String: Bool]? = try? await post("/api/logout", body: [:])
+    }
+}
+
+// MARK: - URLSession Delegate（严格证书验证）
+extension APIService: URLSessionDelegate {
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        // 只接受服务器信任验证
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+        // 设置 SSL 策略，校验证书域名匹配
+        let policy = SecPolicyCreateSSL(true, challenge.protectionSpace.host as CFString)
+        SecTrustSetPolicies(serverTrust, policy)
+
+        var error: CFError?
+        let isValid = SecTrustEvaluateWithError(serverTrust, &error)
+        if isValid {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            // 证书链无效、自签名或域名不匹配，一律拒绝
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
     }
 }
 
@@ -148,12 +180,14 @@ enum APIError: LocalizedError {
     case invalidResponse
     case httpError(Int)
     case serverError(String)
+    case certError(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "无效响应"
         case .httpError(let code): return "HTTP错误 \(code)"
         case .serverError(let msg): return msg
+        case .certError(let msg): return "证书验证失败: \(msg)"
         }
     }
 }

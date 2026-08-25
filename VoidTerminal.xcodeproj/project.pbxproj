@@ -12,6 +12,7 @@
 		A1000005000000000000A01 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000006000000000000A01 /* Models.swift */; };
 		A1000007000000000000A01 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000008000000000000A01 /* APIService.swift */; };
 		A1000009000000000000A01 /* WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000A000000000000A01 /* WebSocketService.swift */; };
+		A1000040000000000000A01 /* SecurityHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041000000000000A01 /* SecurityHelper.swift */; };
 		A100000B000000000000A01 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000A01 /* ChatViewModel.swift */; };
 		A100000D000000000000A01 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000A01 /* RootView.swift */; };
 		A100000F000000000000A01 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000A01 /* Components.swift */; };
@@ -34,6 +35,7 @@
 		A1000006000000000000A01 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		A1000008000000000000A01 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		A100000A000000000000A01 /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
+		A1000041000000000000A01 /* SecurityHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityHelper.swift; sourceTree = "<group>"; };
 		A100000C000000000000A01 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		A100000E000000000000A01 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A1000010000000000000A01 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 			children = (
 				A1000008000000000000A01 /* APIService.swift */,
 				A100000A000000000000A01 /* WebSocketService.swift */,
+				A1000041000000000000A01 /* SecurityHelper.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -257,6 +260,7 @@
 				A1000005000000000000A01 /* Models.swift in Sources */,
 				A1000007000000000000A01 /* APIService.swift in Sources */,
 				A1000009000000000000A01 /* WebSocketService.swift in Sources */,
+				A1000040000000000000A01 /* SecurityHelper.swift in Sources */,
 				A100000B000000000000A01 /* ChatViewModel.swift in Sources */,
 				A100000D000000000000A01 /* RootView.swift in Sources */,
 				A100000F000000000000A01 /* Components.swift in Sources */,

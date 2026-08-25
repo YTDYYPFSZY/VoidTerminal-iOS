@@ -129,7 +129,7 @@ struct AuthView: View {
     private var registerForm: some View {
         VStack(spacing: 12) {
             AppTextField(placeholder: "用户名（2-20位字母/数字/中文）", text: $regUsername)
-            AppTextField(placeholder: "密码（4-64位）", text: $regPassword, isSecure: true)
+            AppTextField(placeholder: "密码（8-64位，需含字母和数字）", text: $regPassword, isSecure: true)
             AppTextField(placeholder: "确认密码", text: $regPassword2, isSecure: true)
 
             if !message.isEmpty {
@@ -178,8 +178,9 @@ struct AuthView: View {
             message = "用户名需为2-20位"
             return
         }
-        guard regPassword.count >= 4, regPassword.count <= 64 else {
-            message = "密码需为4-64位"
+        let validation = PasswordValidator.validate(regPassword)
+        guard validation.isValid else {
+            message = validation.message ?? "密码不符合要求"
             return
         }
         guard regPassword == regPassword2 else {
@@ -216,7 +217,7 @@ struct ServerConfigView: View {
         NavigationStack {
             Form {
                 Section("服务器地址") {
-                    TextField("http://buer.kdns.fr", text: $serverURL)
+                    TextField("https://buer.kdns.fr", text: $serverURL)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                     Text("WebSocket地址将自动推导：\(derivedWSURL)")

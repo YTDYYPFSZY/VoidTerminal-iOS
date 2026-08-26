@@ -8,7 +8,8 @@ final class SecureLogger {
     static let shared = SecureLogger()
     
     // MARK: - RSA 公钥（Base64 编码，用于加密日志）
-    private static let publicKeyBase64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq5SCCBBTfJ1Rl9SfPekFzb5vtIYzuk4irSU0iUTSjyMI3s1dfH3Pt95GCQZ6gixx22pzDZzOBZhkbuEoIN+7gjTSqimVUym48yE9JB6c37ERFB2BDNnTXWt9T36j5GzH26xSsJi3/MKgN9Ey0DO+PwuF6jmFJ+8tzcuw3jHLJkU3YhaHqVmgZIUbg2aLGZbDQDw/Ria4FbHPfimHXZo+IOLHi4VOxtQXDbL6ifJDgRecJ3Gj7IJwce/loSr9jRJCfNV8/c31y4t1EBYWOkMtju16yxXtjAEINBt3/+rHYrYDEeX0PxxADWOrpV9hmI0wRtJa47lXR/zMZJytGp6QIDAQAB"
+    // PKCS#1 格式 RSA 公钥（270 字节 DER），适配 SecKeyCreateWithData
+    private static let publicKeyBase64 = "MIIBCgKCAQEA0hYtc6pwgsLpWyZk3y8dQezstuIilPyG6yTbeofSwysXeQIigfDVsLX7zro6cfB4fVhMAagQ/1M0puvyTruYwgMVY90lIujHlHYjs8mZxKjB0aQJUZXsRqWWoGdAbT6GSHZt4xxTN3KsrUD25IA5zaehDqdGLAZoy/OLW6Qs4mcg2B0cMI4o+inYaeodJoD4jQiUZO/svdr+S+xmRLK83E4qCCrDkr41ruAv/3V9OM673ILpt+6zhgzQG6dJxEVOnm2ik0oRPvxPZNER7QuZ+YzguOLcI3UqzKND8iFon1yWj7I8lnMBGpVKrkSAc39/BkDnZz+78BWoaRCJeNoOMwIDAQAB"
     
     // MARK: - 日志条目
     private struct LogEntry: Codable {

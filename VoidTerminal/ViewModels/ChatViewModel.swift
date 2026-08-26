@@ -24,6 +24,10 @@ final class ChatViewModel: ObservableObject {
     private let api = APIService.shared
     private var currentUserName: String = "我"
 
+    // 发送防重复：记录最近一次发送的内容摘要和时间戳
+    private var lastSentContentHash: String = ""
+    private var lastSentTimestamp: Int = 0
+
     enum RoomType: Hashable {
         case global
         case dm(peerId: String, peerName: String)
@@ -210,6 +214,13 @@ final class ChatViewModel: ObservableObject {
                 self?.showToast(error)
             }
         }
+        ws.onGroupDissolved = { [weak self] gid in
+            Task { @MainActor in
+                self?.groups.removeAll { $0.id == gid }
+                self?.groupMessages.removeValue(forKey: gid)
+                self?.showToast("群聊已解散")
+            }
+        }
         ws.onGroupRenamed = { [weak self] gid, group in
             Task { @MainActor in
                 if let idx = self?.groups.firstIndex(where: { $0.id == gid }) {
@@ -232,7 +243,18 @@ final class ChatViewModel: ObservableObject {
             }
         }
         ws.onMomentsUpdate = { [weak self] list in
-            Task { @MainActor in self?.moments = list }
+            Task { @MainActor in
+                // 按时间倒序排列（最新的在最上面）
+                self?.moments = list.sorted { $0.time > $1.time }
+            }
+        }
+        ws.onMomentPosted = { [weak self] moment in
+            Task { @MainActor in
+                // 将新朋友圈插入到列表开头
+                if !((self?.moments.contains(where: { $0.id == moment.id })) ?? true) {
+                    self?.moments.insert(moment, at: 0)
+                }
+            }
         }
         ws.onHallRenamed = { [weak self] name in
             Task { @MainActor in
@@ -317,21 +339,28 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func handleHello(_ msg: HelloMessage) {
-        AppLogger.shared.log("[HELLO] friends=\(msg.friends?.count ?? -1) groups=\(msg.groups?.count ?? -1) globalMsgs=\(msg.globalMsgs?.count ?? -1) dmRooms=\(msg.dmRooms?.count ?? -1) isAdmin=\(msg.isAdmin ?? false) hallName=\(msg.hallName ?? "nil")")
+        SecureLogger.shared.log("friends=\(msg.friends?.count ?? -1) groups=\(msg.groups?.count ?? -1) globalMsgs=\(msg.globalMsgs?.count ?? -1) dmRooms=\(msg.dmRooms?.count ?? -1) isAdmin=\(msg.isAdmin ?? false) hallName=\(msg.hallName ?? "nil")", module: "Chat")
         if let user = msg.selfUser {
             currentUserName = user.username
             setCurrentUserId(user.id)
         }
-        globalMessages = (msg.globalMsgs ?? []).map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
+        // 增量合并：服务端消息与本地缓存按 ID 去重合并，而非全量替换
+        let serverGlobal = (msg.globalMsgs ?? []).map { m -> ChatMessage in
+            var msg = m; msg.isFromMe = (msg.from == currentUserId); return msg
+        }
+        globalMessages = mergeMessages(local: globalMessages, remote: serverGlobal, limit: 500)
         groups = (msg.groups ?? []).map { var g = $0; g.isOwner = (g.owner == currentUserId); return g }
         friends = msg.friends ?? []
         pendingRequests = msg.pendingRequests ?? []
         if let gm = msg.groupMsgs {
-            groupMessages = gm.mapValues { arr in
-                arr.map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
+            for (gid, arr) in gm {
+                let serverMsgs = arr.map { m -> ChatMessage in
+                    var msg = m; msg.isFromMe = (msg.from == currentUserId); return msg
+                }
+                groupMessages[gid] = mergeMessages(local: groupMessages[gid] ?? [], remote: serverMsgs, limit: 500)
             }
         }
-        moments = msg.moments ?? []
+        moments = (msg.moments ?? []).sorted { $0.time > $1.time }
         if let ann = msg.announcement, !ann.isEmpty {
             self.announcement = ann
         }
@@ -344,10 +373,13 @@ final class ChatViewModel: ObservableObject {
         if let admin = msg.isAdmin {
             NotificationCenter.default.post(name: .adminStatusUpdate, object: admin)
         }
-        // 处理dmRooms（对象格式：{roomKey: [messages]}，key已是排序后的roomKey，直接用）
+        // 处理dmRooms（对象格式：{roomKey: [messages]}，增量合并）
         if let rooms = msg.dmRooms {
             for (key, msgs) in rooms {
-                dmMessages[key] = msgs.map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
+                let serverMsgs = msgs.map { m -> ChatMessage in
+                    var msg = m; msg.isFromMe = (msg.from == currentUserId); return msg
+                }
+                dmMessages[key] = mergeMessages(local: dmMessages[key] ?? [], remote: serverMsgs, limit: 300)
             }
         }
         // 从历史消息中提取所有已知用户（群成员、私聊对象等）
@@ -357,6 +389,21 @@ final class ChatViewModel: ObservableObject {
         // 从群成员列表中提取用户（即使从未发过消息也能显示）
         for g in groups { registerGroupMembers(g) }
         saveToLocal()
+    }
+    
+    /// 增量合并消息：本地缓存 + 服务端数据按 ID 去重，保留最新内容，按时间排序
+    private func mergeMessages(local: [ChatMessage], remote: [ChatMessage], limit: Int) -> [ChatMessage] {
+        var merged: [String: ChatMessage] = [:]
+        // 先放本地缓存（去除临时消息，临时消息会被服务端确认消息替代）
+        for m in local where !m.id.hasPrefix("temp_") {
+            merged[m.id] = m
+        }
+        // 服务端数据覆盖/新增
+        for m in remote {
+            merged[m.id] = m
+        }
+        // 按时间排序，截取上限
+        return merged.values.sorted { $0.time < $1.time }.suffix(limit).map { $0 }
     }
 
     func dmRoomKey(_ a: String, _ b: String) -> String {
@@ -373,8 +420,17 @@ final class ChatViewModel: ObservableObject {
 
     func sendMessage(_ text: String, images: [String] = []) {
         guard let room = currentRoom, !text.isEmpty || !images.isEmpty else { return }
-        let tempId = "temp_" + UUID().uuidString
+
+        // 防重复发送兜底：3秒内相同内容不重复发送
         let now = Int(Date().timeIntervalSince1970 * 1000)
+        let contentHash = "\(text)|\(images.sorted().joined(separator: ","))"
+        if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3000 {
+            return
+        }
+        lastSentContentHash = contentHash
+        lastSentTimestamp = now
+
+        let tempId = "temp_" + UUID().uuidString
         var tempMsg = ChatMessage(
             id: tempId, from: currentUserId,
             fromName: currentUserName, content: text,

@@ -1,8 +1,20 @@
 import SwiftUI
+import UIKit
 
 @main
 struct VoidTerminalApp: App {
     @StateObject private var appState = AppState()
+
+    init() {
+        // 配置全局 URLCache：内存 20MB + 磁盘 200MB
+        // 让所有 URLSession 请求（含 AsyncImage）自动获得 HTTP 级缓存
+        let cache = URLCache(
+            memoryCapacity: 20 * 1024 * 1024,   // 20MB 内存
+            diskCapacity: 200 * 1024 * 1024,     // 200MB 磁盘
+            diskPath: "url_cache"
+        )
+        URLCache.shared = cache
+    }
 
     var body: some Scene {
         WindowGroup {

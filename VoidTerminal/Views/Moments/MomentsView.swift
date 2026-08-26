@@ -197,21 +197,20 @@ struct MomentsView: View {
                       [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
         return LazyVGrid(columns: columns, spacing: 4) {
             ForEach(Array(images.enumerated()), id: \.offset) { _, imgPath in
-                let url = imgPath.hasPrefix("http") ? imgPath : ServerConfig.shared.baseURL + imgPath
+                let urlStr = imgPath.hasPrefix("http") ? imgPath : ServerConfig.shared.baseURL + imgPath
                 Button {
-                    previewImageURL = url
+                    previewImageURL = urlStr
                 } label: {
-                    AsyncImage(url: URL(string: url)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        default:
-                            Color.gray
-                        }
+                    if let url = URL(string: urlStr) {
+                        CachedAsyncImage(
+                            url: url,
+                            contentMode: .fill,
+                            placeholderColor: Color.gray.opacity(0.2)
+                        )
+                        .frame(width: images.count == 1 ? 200 : 90, height: images.count == 1 ? 200 : 90)
+                        .clipped()
+                        .cornerRadius(6)
                     }
-                    .frame(width: images.count == 1 ? 200 : 90, height: images.count == 1 ? 200 : 90)
-                    .clipped()
-                    .cornerRadius(6)
                 }
             }
         }

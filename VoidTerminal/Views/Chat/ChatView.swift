@@ -326,6 +326,9 @@ struct ChatView: View {
                     }
                 }
                 messageBubble(msg, isMe: isMe)
+                Text(formatMessageTime(msg.time))
+                    .font(.vt(size: 10))
+                    .foregroundColor(Color.vtTextDim.opacity(0.7))
             }
             if isMe {
                 AvatarView(name: appState.currentUser?.username ?? "我", avatarURL: appState.currentUser?.avatar, size: 36,
@@ -338,6 +341,20 @@ struct ChatView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             contextMenuMessage = msg
         }
+    }
+
+    private func formatMessageTime(_ unix: Int) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(unix))
+        let cal = Calendar.current
+        let f = DateFormatter()
+        if cal.isDateInToday(date) {
+            f.dateFormat = "HH:mm"
+        } else if cal.isDateInYesterday(date) {
+            f.dateFormat = "昨天 HH:mm"
+        } else {
+            f.dateFormat = "MM-dd HH:mm"
+        }
+        return f.string(from: date)
     }
 
     private func messageBubble(_ msg: ChatMessage, isMe: Bool) -> some View {

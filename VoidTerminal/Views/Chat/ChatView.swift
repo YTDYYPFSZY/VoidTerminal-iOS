@@ -344,7 +344,9 @@ struct ChatView: View {
     }
 
     private func formatMessageTime(_ unix: Int) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(unix))
+        // 兼容秒和毫秒时间戳：大于1e12视为毫秒
+        let ts = unix > 1_000_000_000_000 ? TimeInterval(unix) / 1000.0 : TimeInterval(unix)
+        let date = Date(timeIntervalSince1970: ts)
         let cal = Calendar.current
         let f = DateFormatter()
         if cal.isDateInToday(date) {

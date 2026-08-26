@@ -288,7 +288,7 @@ struct ChatView: View {
                     }
             }
             VStack(alignment: isMe ? .trailing : .leading, spacing: 4) {
-                if !isMe, let name = msg.fromName, case .group = room {
+                if !isMe, msg.from != "system", let name = msg.fromName, !name.isEmpty {
                     HStack(spacing: 4) {
                         Text(name)
                             .font(.vt(size: 12))
@@ -300,6 +300,25 @@ struct ChatView: View {
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(Color.vtPanel2)
+                                .cornerRadius(3)
+                        }
+                        if msg.fromRole == "admin" {
+                            Text("站长")
+                                .font(.vt(size: 9, weight: .bold))
+                                .foregroundColor(Color(hex: "dc2626"))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color(hex: "fef2f2"))
+                                .cornerRadius(3)
+                        } else if case .group(let gid, _) = room,
+                                  let group = chatVM.group(by: gid),
+                                  group.owner == msg.from {
+                            Text("群主")
+                                .font(.vt(size: 9, weight: .bold))
+                                .foregroundColor(Color(hex: "d97706"))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color(hex: "fffbeb"))
                                 .cornerRadius(3)
                         }
                     }

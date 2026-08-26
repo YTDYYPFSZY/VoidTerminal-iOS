@@ -1,25 +1,37 @@
 import SwiftUI
 
-// MARK: - Avatar View
+// MARK: - Avatar URL 拼接
+private func resolveAvatarURL(_ url: String?) -> URL? {
+    guard let url = url, !url.isEmpty else { return nil }
+    if url.hasPrefix("http://") || url.hasPrefix("https://") {
+        return URL(string: url)
+    }
+    var base = ServerConfig.shared.baseURL
+    if base.hasSuffix("/") { base.removeLast() }
+    let path = url.hasPrefix("/") ? url : "/" + url
+    return URL(string: base + path)
+}
+
+// MARK: - Cached Avatar View（带内存缓存 + 失败重试）
 struct AvatarView: View {
     let name: String
     var avatarURL: String?
     var size: CGFloat = 44
     var gradient: Gradient = Gradient(colors: [Color(hex: "3b82f6"), Color(hex: "8b5cf6")])
+    @State private var loadedImage: UIImage?
+    @State private var loadFailed: Bool = false
 
     var body: some View {
         Group {
-            if let url = avatarURL, !url.isEmpty, let imgURL = URL(string: url.hasPrefix("http") ? url : ServerConfig.shared.baseURL + url) {
-                AsyncImage(url: imgURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        placeholder
-                    }
-                }
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+            if let img = loadedImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+            } else if let url = resolveAvatarURL(avatarURL), !loadFailed {
+                CachedAvatar(url: url, size: size, cornerRadius: size * 0.22, gradient: gradient,
+                             fallbackText: String(name.prefix(1)))
             } else {
                 placeholder
             }
@@ -35,6 +47,111 @@ struct AvatarView: View {
                 .foregroundColor(.vtText)
         }
         .frame(width: size, height: size)
+    }
+}
+
+// MARK: - CachedAvatar：使用 ImageCacheManager 双层缓存（内存+磁盘）
+private struct CachedAvatar: View {
+    let url: URL
+    let size: CGFloat
+    let cornerRadius: CGFloat
+    let gradient: Gradient
+    let fallbackText: String
+    @State private var image: UIImage?
+    @State private var failed: Bool = false
+
+    var body: some View {
+        Group {
+            if let img = image {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            } else {
+                placeholder
+                    .task { await load() }
+            }
+        }
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(LinearGradient(gradient: gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text(fallbackText)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundColor(.vtText)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func load() async {
+        // 先查缓存（内存→磁盘，命中则瞬间返回）
+        if let cached = ImageCacheManager.shared.cachedImage(for: url) {
+            image = cached
+            return
+        }
+        // 缓存未命中，走网络下载并自动缓存
+        if let img = await ImageCacheManager.shared.loadImage(from: url) {
+            await MainActor.run { self.image = img }
+        } else {
+            await MainActor.run { self.failed = true }
+        }
+    }
+}
+
+// MARK: - CachedAsyncImage：消息图片缓存视图
+/// 替代 AsyncImage，使用 ImageCacheManager 双层缓存
+/// 首次加载走网络，之后全部走缓存（内存→磁盘），不再重复下载
+struct CachedAsyncImage: View {
+    let url: URL
+    var contentMode: ContentMode = .fill
+    var placeholderColor: Color = Color.gray.opacity(0.3)
+
+    @State private var image: UIImage?
+    @State private var loadState: LoadState = .idle
+
+    enum LoadState { case idle, loading, loaded, failed }
+
+    var body: some View {
+        Group {
+            switch loadState {
+            case .loaded:
+                if let img = image {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                }
+            case .loading, .idle:
+                placeholderColor
+                    .overlay(ProgressView().tint(.white.opacity(0.6)))
+            case .failed:
+                placeholderColor
+                    .overlay(
+                        Image(systemName: "photo")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 20))
+                    )
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        // 先查缓存
+        if let cached = ImageCacheManager.shared.cachedImage(for: url) {
+            image = cached
+            loadState = .loaded
+            return
+        }
+        loadState = .loading
+        if let img = await ImageCacheManager.shared.loadImage(from: url) {
+            image = img
+            loadState = .loaded
+        } else {
+            loadState = .failed
+        }
     }
 }
 

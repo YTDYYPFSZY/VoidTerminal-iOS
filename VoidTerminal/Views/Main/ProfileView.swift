@@ -503,10 +503,19 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v3.0",
+            version: "v3.0.1",
             date: "2026-08-26",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "修复已知问题"
+            ]
+        ),
+        VersionLog(
+            version: "v3.0",
+            date: "2026-08-26",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "新增图片缓存，图片不再每次重新加载",
                 "头像加载速度优化，支持离线缓存",

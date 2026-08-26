@@ -460,10 +460,23 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v2.1",
+            version: "v2.2",
             date: "2026-08-26",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "修复头像加载不稳定问题：替换 AsyncImage 为带缓存的 URLSession 加载方案，首次加载后后续秒开",
+                "修复头像 URL 拼接 bug：相对路径与 baseURL 拼接时不再出现双斜杠导致 404",
+                "加载失败时优雅回退，显示首字母占位符",
+                "修复消息发送重复问题：点击发送后立即锁定输入并禁用按钮，防止重复提交",
+                "修复群成员列表和@列表只显示部分成员问题：新增 knownUsers 用户缓存，群成员和@列表现在能正确显示所有群成员"
+            ]
+        ),
+        VersionLog(
+            version: "v2.1",
+            date: "2026-08-26",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "消息发送者用户名显示：大厅和群聊中所有非自己、非系统消息均显示发送者用户名，与网页版行为一致",
                 "角色标签补齐：新增「站长」红色标签和「群主」橙色标签，保留原有 BOT 蓝色标签",
@@ -518,13 +531,15 @@ struct ChangelogView: View {
                                     Text(log.version)
                                         .font(.vt(size: 18, weight: .bold))
                                         .foregroundColor(.vtText)
-                                    Text(log.badge)
-                                        .font(.vt(size: 10, weight: .semibold))
-                                        .foregroundColor(.vtText)
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 3)
-                                        .background(Color(hex: log.badgeColor))
-                                        .cornerRadius(4)
+                                    if !log.badge.isEmpty {
+                                        Text(log.badge)
+                                            .font(.vt(size: 10, weight: .semibold))
+                                            .foregroundColor(.vtText)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 3)
+                                            .background(Color(hex: log.badgeColor))
+                                            .cornerRadius(4)
+                                    }
                                     Spacer()
                                     Text(log.date)
                                         .font(.vt(size: 12))

@@ -111,7 +111,7 @@ struct ProfileView: View {
                             menuButton(title: "更改密码") { showChangePassword = true }
 
                             menuButton(title: "服务器设置") { showServerConfig = true }
-                            menuButton(title: "🔍 调试日志") { showDebugLog = true }
+                            menuButton(title: "📊 运行日志") { showDebugLog = true }
 
                             menuButton(title: "📋 更新日志") { showChangelog = true }
 
@@ -168,7 +168,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showAdmin) { AdminView().environmentObject(chatVM) }
             .sheet(isPresented: $showServerConfig) { ServerConfigView() }
             .sheet(isPresented: $showDebugLog) {
-                DebugLogView()
+                LogExportView()
             }
             .sheet(isPresented: $showChangelog) {
                 ChangelogView()
@@ -396,54 +396,97 @@ struct AdminView: View {
 }
 import SwiftUI
 
-struct DebugLogView: View {
-    @State private var logs: [String] = []
-    @State private var timer: Timer?
+struct LogExportView: View {
+    @State private var exportedFileURL: URL?
+    @State private var showShareSheet = false
+    @State private var logCount = 0
+    @State private var exportSuccess = false
     
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.vtBG.ignoresSafeArea()
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 4) {
-                        if logs.isEmpty {
-                            Text("暂无日志，登录后会自动记录")
-                                .foregroundColor(.vtTextDim)
-                                .padding()
-                        }
-                        ForEach(logs, id: \.self) { log in
-                            Text(log)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.vtText)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 12)
-                        }
+                
+                VStack(spacing: 24) {
+                    Spacer()
+                    
+                    // 图标
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 56))
+                        .foregroundColor(.vtTextDim)
+                    
+                    Text("运行日志已加密")
+                        .font(.vt(size: 16))
+                        .foregroundColor(.vtText)
+                    
+                    Text("当前记录 \(logCount) 条加密日志")
+                        .font(.vt(size: 13))
+                        .foregroundColor(.vtTextDim)
+                    
+                    if exportSuccess {
+                        Text("导出成功，请通过分享面板发送")
+                            .font(.vt(size: 13))
+                            .foregroundColor(Color(hex: "07c160"))
                     }
-                    .padding(.vertical, 12)
+                    
+                    Spacer().frame(height: 16)
+                    
+                    // 导出按钮
+                    Button {
+                        if let url = SecureLogger.shared.exportLog() {
+                            exportedFileURL = url
+                            showShareSheet = true
+                            exportSuccess = true
+                        }
+                    } label: {
+                        Text("导出日志文件")
+                            .font(.vt(size: 15))
+                            .foregroundColor(.vtText)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.vtPanel)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vtBorder, lineWidth: 1))
+                    }
+                    .padding(.horizontal, 32)
+                    
+                    // 清除按钮
+                    Button {
+                        SecureLogger.shared.clearLogs()
+                        logCount = 0
+                        exportSuccess = false
+                    } label: {
+                        Text("清除所有日志")
+                            .font(.vt(size: 14))
+                            .foregroundColor(Color(hex: "e5484d"))
+                    }
+                    
+                    Spacer()
                 }
             }
-            .navigationTitle("调试日志")
+            .navigationTitle("运行日志")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("清空") {
-                        AppLogger.shared.clear()
-                        logs = []
-                    }
-                }
-            }
             .onAppear {
-                logs = AppLogger.shared.logs
-                timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-                    logs = AppLogger.shared.logs
-                }
+                logCount = SecureLogger.shared.logCount
             }
-            .onDisappear {
-                timer?.invalidate()
-                timer = nil
+            .sheet(isPresented: $showShareSheet) {
+                if let url = exportedFileURL {
+                    ActivityView(items: [url])
+                }
             }
         }
     }
+}
+
+// MARK: - Share Sheet
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Changelog
@@ -460,16 +503,28 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v2.2",
+            version: "v3.0",
             date: "2026-08-26",
             badge: "最新",
             badgeColor: "07c160",
             items: [
-                "修复头像加载不稳定问题：替换 AsyncImage 为带缓存的 URLSession 加载方案，首次加载后后续秒开",
-                "修复头像 URL 拼接 bug：相对路径与 baseURL 拼接时不再出现双斜杠导致 404",
-                "加载失败时优雅回退，显示首字母占位符",
-                "修复消息发送重复问题：点击发送后立即锁定输入并禁用按钮，防止重复提交",
-                "修复群成员列表和@列表只显示部分成员问题：新增 knownUsers 用户缓存，群成员和@列表现在能正确显示所有群成员"
+                "新增图片缓存，图片不再每次重新加载",
+                "头像加载速度优化，支持离线缓存",
+                "聊天图片、朋友圈图片、图片预览均支持缓存",
+                "消息加载速度优化，重连后减少重复请求",
+                "朋友圈按时间倒序排列，最新动态显示在最上面"
+            ]
+        ),
+        VersionLog(
+            version: "v2.2",
+            date: "2026-08-26",
+            badge: "",
+            badgeColor: "6b7280",
+            items: [
+                "修复头像加载不稳定问题",
+                "修复消息重复发送问题",
+                "修复群成员列表显示不全",
+                "修复群解散和发朋友圈后不实时更新"
             ]
         ),
         VersionLog(
@@ -478,11 +533,10 @@ struct ChangelogView: View {
             badge: "",
             badgeColor: "6b7280",
             items: [
-                "消息发送者用户名显示：大厅和群聊中所有非自己、非系统消息均显示发送者用户名，与网页版行为一致",
-                "角色标签补齐：新增「站长」红色标签和「群主」橙色标签，保留原有 BOT 蓝色标签",
-                "系统消息过滤：系统通知不再显示空用户名标签",
-                "新增「更新日志」界面，可在「我的」页面查看各版本更新内容",
-                "「我的」页面底部显示当前应用版本号"
+                "聊天消息显示发送者用户名",
+                "新增站长、群主角色标签",
+                "新增更新日志界面",
+                "底部显示当前版本号"
             ]
         ),
         VersionLog(
@@ -491,12 +545,9 @@ struct ChangelogView: View {
             badge: "安全",
             badgeColor: "f59e0b",
             items: [
-                "传输安全：默认地址改为 HTTPS，删除 ATS 豁免，实现 SSL Pinning 证书校验",
-                "Token 存储：从 UserDefaults 明文迁移至 Keychain 硬件级加密，不上传 iCloud",
-                "聊天记录加密：好友列表、群组、大厅/私聊/群聊消息全部 AES-256-GCM 加密存储",
-                "密码策略：注册时强制 8 位以上且包含字母和数字，拒绝弱密码",
-                "新增 SecurityHelper 安全模块（KeychainHelper + SecureStorage + PasswordValidator）",
-                "GitHub Actions 自动编译配置"
+                "全面安全加固：传输加密、本地数据加密、Token安全存储",
+                "注册密码增加强度要求",
+                "支持GitHub Actions云编译"
             ]
         ),
         VersionLog(
@@ -506,14 +557,11 @@ struct ChangelogView: View {
             badgeColor: "6b7280",
             items: [
                 "虚空终端 iOS 客户端首个版本",
-                "支持全局大厅聊天、私聊、群聊",
-                "支持好友系统、朋友圈（Moments）",
-                "支持消息撤回、输入状态、已读回执",
-                "支持群主管理（改名、解散、踢人、公告）",
-                "支持站长管理（封禁、公告、大厅管理）",
-                "支持日间/夜间模式切换、字体大小调节",
-                "支持头像上传、用户名/密码修改",
-                "支持服务器地址自定义配置"
+                "支持大厅聊天、私聊、群聊",
+                "支持好友系统和朋友圈",
+                "支持图片消息和消息撤回",
+                "支持群主管理和站长管理",
+                "支持头像更换、主题切换、字体调节"
             ]
         )
     ]

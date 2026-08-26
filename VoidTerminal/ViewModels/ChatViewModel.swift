@@ -9,6 +9,7 @@ final class ChatViewModel: ObservableObject {
     @Published var groupMessages: [String: [ChatMessage]] = [:] // gid
     @Published var groups: [ChatGroup] = []
     @Published var friends: [User] = []
+    @Published var knownUsers: [String: User] = [:]  // 所有已知用户（含群成员，非好友）
     @Published var pendingRequests: [FriendRequest] = []
     @Published var moments: [Moment] = []
     @Published var onlineUsers: Set<String> = []
@@ -75,6 +76,7 @@ final class ChatViewModel: ObservableObject {
         ws.onGlobalMessage = { [weak self] msg in
             Task { @MainActor in
                 guard let self = self else { return }
+                self.registerUser(from: msg)
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
                 // 去重：收到自己的消息时，移除所有临时消息
@@ -93,6 +95,7 @@ final class ChatViewModel: ObservableObject {
         ws.onDMMessage = { [weak self] msg in
             Task { @MainActor in
                 guard let self = self else { return }
+                self.registerUser(from: msg)
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
                 let peer = m.from == self.currentUserId ? (m.to ?? "") : m.from
@@ -111,6 +114,7 @@ final class ChatViewModel: ObservableObject {
         ws.onGroupMessage = { [weak self] msg in
             Task { @MainActor in
                 guard let self = self, let gid = msg.gid else { return }
+                self.registerUser(from: msg)
                 var m = msg
                 m.isFromMe = (m.from == self.currentUserId)
                 if self.groupMessages[gid] == nil { self.groupMessages[gid] = [] }
@@ -195,6 +199,7 @@ final class ChatViewModel: ObservableObject {
                 var g = group
                 g.isOwner = true
                 self?.groups.append(g)
+                self?.registerGroupMembers(g)
                 self?.showToast("群聊「\(group.name)」已创建")
             }
         }
@@ -254,6 +259,7 @@ final class ChatViewModel: ObservableObject {
             Task { @MainActor in
                 if let group = group {
                     self?.groups.append(group)
+                    self?.registerGroupMembers(group)
                 }
                 self?.showToast("你已成功加入群聊")
                 self?.saveToLocal()
@@ -344,6 +350,12 @@ final class ChatViewModel: ObservableObject {
                 dmMessages[key] = msgs.map { var m = $0; m.isFromMe = (m.from == currentUserId); return m }
             }
         }
+        // 从历史消息中提取所有已知用户（群成员、私聊对象等）
+        for m in globalMessages { registerUser(from: m) }
+        for msgs in dmMessages.values { for m in msgs { registerUser(from: m) } }
+        for msgs in groupMessages.values { for m in msgs { registerUser(from: m) } }
+        // 从群成员列表中提取用户（即使从未发过消息也能显示）
+        for g in groups { registerGroupMembers(g) }
         saveToLocal()
     }
 
@@ -418,8 +430,32 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    /// 从消息中提取发送者信息，注册到 knownUsers（用于非好友群成员显示）
+    private func registerUser(from msg: ChatMessage) {
+        guard !msg.from.isEmpty, msg.from != currentUserId else { return }
+        if knownUsers[msg.from] != nil { return }
+        let user = User(
+            id: msg.from,
+            username: msg.fromName ?? msg.from,
+            avatar: msg.fromAvatar,
+            role: msg.fromRole,
+            banned: false,
+            createdAt: nil
+        )
+        knownUsers[msg.from] = user
+    }
+
+    /// 从群成员列表注册已知用户（即使从未发过消息也能在群成员列表和@列表中显示）
+    private func registerGroupMembers(_ group: ChatGroup) {
+        for memberId in group.members {
+            guard !memberId.isEmpty, memberId != currentUserId else { continue }
+            if knownUsers[memberId] != nil { continue }
+            knownUsers[memberId] = User(id: memberId, username: memberId, avatar: nil, role: nil, banned: false, createdAt: nil)
+        }
+    }
+
     func user(by id: String) -> User? {
-        friends.first { $0.id == id }
+        friends.first { $0.id == id } ?? knownUsers[id]
     }
 
     func group(by id: String) -> ChatGroup? {

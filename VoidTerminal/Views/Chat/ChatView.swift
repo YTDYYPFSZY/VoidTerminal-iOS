@@ -19,6 +19,8 @@ struct ChatView: View {
     @State private var showMentionPanel = false
     @State private var mentionSearchText = ""
     @FocusState private var isInputFocused: Bool
+    @State private var isSending = false
+    @State private var lastSendAttemptTime: Date = .distantPast
 
     private let api = APIService.shared
 
@@ -391,21 +393,20 @@ struct ChatView: View {
                       [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
         return LazyVGrid(columns: columns, spacing: 4) {
             ForEach(Array(images.enumerated()), id: \.offset) { _, imgPath in
-                let url = imgPath.hasPrefix("http") ? imgPath : ServerConfig.shared.baseURL + imgPath
+                let urlStr = imgPath.hasPrefix("http") ? imgPath : ServerConfig.shared.baseURL + imgPath
                 Button {
-                    previewImageURL = url
+                    previewImageURL = urlStr
                 } label: {
-                    AsyncImage(url: URL(string: url)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        default:
-                            Color.gray.frame(width: 80, height: 80)
-                        }
+                    if let url = URL(string: urlStr) {
+                        CachedAsyncImage(
+                            url: url,
+                            contentMode: .fill,
+                            placeholderColor: Color.gray.opacity(0.2)
+                        )
+                        .frame(width: images.count == 1 ? 160 : 70, height: images.count == 1 ? 160 : 70)
+                        .clipped()
+                        .cornerRadius(6)
                     }
-                    .frame(width: images.count == 1 ? 160 : 70, height: images.count == 1 ? 160 : 70)
-                    .clipped()
-                    .cornerRadius(6)
                 }
             }
         }
@@ -475,8 +476,8 @@ struct ChatView: View {
                     .background(Color(hex: "07c160"))
                     .cornerRadius(8)
             }
-            .disabled(messageText.isEmpty && draftImages.isEmpty)
-            .opacity(messageText.isEmpty && draftImages.isEmpty ? 0.5 : 1)
+            .disabled((messageText.isEmpty && draftImages.isEmpty) || isSending)
+            .opacity((messageText.isEmpty && draftImages.isEmpty) || isSending ? 0.5 : 1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -485,35 +486,54 @@ struct ChatView: View {
     }
 
     private func sendMessage() {
+        // 双层防重复：isSending 锁 + 时间戳防抖（2秒内不允许二次触发）
+        let now = Date()
+        guard !isSending else { return }
+        guard now.timeIntervalSince(lastSendAttemptTime) >= 2.0 else { return }
+        lastSendAttemptTime = now
+
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !draftImages.isEmpty else { return }
-        if !draftImages.isEmpty {
+
+        // 立即锁定 + 清空输入，防止重复发送
+        isSending = true
+        let currentText = text
+        let currentImages = draftImages
+        messageText = ""
+        draftImages.removeAll()
+        showMentionPanel = false
+        mentionSearchText = ""
+
+        if !currentImages.isEmpty {
             Task {
                 var uploadedURLs: [String] = []
-                for img in draftImages {
+                for img in currentImages {
                     if let data = img.jpegData(compressionQuality: 0.8),
                        let token = appState.token {
                         do {
                             let url = try await api.uploadMessageImage(token: token, imageData: data)
                             uploadedURLs.append(url)
                         } catch {
-                            chatVM.showToast("图片上传失败: \(error.localizedDescription)")
+                            await MainActor.run {
+                                chatVM.showToast("图片上传失败: \(error.localizedDescription)")
+                            }
                         }
                     }
                 }
                 await MainActor.run {
-                    chatVM.sendMessage(text, images: uploadedURLs)
-                    showMentionPanel = false
-                    mentionSearchText = ""
-                    messageText = ""
-                    draftImages.removeAll()
+                    chatVM.sendMessage(currentText, images: uploadedURLs)
+                    // 图片消息等上传完成后再延迟解锁
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        isSending = false
+                    }
                 }
             }
         } else {
-            chatVM.sendMessage(text)
-            showMentionPanel = false
-            mentionSearchText = ""
-            messageText = ""
+            chatVM.sendMessage(currentText)
+            // 纯文本消息延迟解锁，防止快速双击重复发送
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                isSending = false
+            }
         }
     }
 }
@@ -526,18 +546,25 @@ struct ImagePreviewURL: Identifiable {
 struct ImagePreviewView: View {
     let url: String
     @Environment(\.dismiss) private var dismiss
+    @State private var image: UIImage?
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            AsyncImage(url: URL(string: url)) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().aspectRatio(contentMode: .fit)
-                default:
-                    ProgressView()
-                }
+            if let img = image {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                ProgressView()
+                    .tint(.white)
             }
         }
         .onTapGesture { dismiss() }
+        .task {
+            if let u = URL(string: url) {
+                image = await ImageCacheManager.shared.loadImage(from: u)
+            }
+        }
     }
 }

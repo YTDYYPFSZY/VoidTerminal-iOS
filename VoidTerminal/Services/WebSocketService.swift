@@ -33,10 +33,12 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     var onRequestSent: ((Bool, String?) -> Void)?
     var onGroupCreated: ((ChatGroup) -> Void)?
     var onGroupRemoved: ((String, String) -> Void)?
+    var onGroupDissolved: ((String) -> Void)?  // 群解散
     var onGroupRenamed: ((String, ChatGroup) -> Void)?
     var onGroupMemberRemoved: ((String, ChatGroup, String) -> Void)?
     var onGroupAvatarUpdated: ((String, String) -> Void)?
     var onMomentsUpdate: (([Moment]) -> Void)?
+    var onMomentPosted: ((Moment) -> Void)?  // 新增单条朋友圈
     var onMaxOnlineUpdate: ((Int) -> Void)?
     var onHallRenamed: ((String) -> Void)?
     var onHallCleared: (() -> Void)?
@@ -248,10 +250,10 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         case "hello":
             do {
                 let msg = try decoder.decode(HelloMessage.self, from: data)
-                AppLogger.shared.log("[WS] hello decoded successfully")
+                SecureLogger.shared.log("hello decoded successfully", module: "WebSocket")
                 onHello?(msg)
             } catch {
-                AppLogger.shared.log("[WS] hello decode FAILED: \(error)")
+                SecureLogger.shared.log("hello decode FAILED: \(error)", level: .error, module: "WebSocket")
             }
         case "global":
             if var msg = try? decoder.decode(ChatMessage.self, from: data) {
@@ -319,6 +321,9 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             let gid = dict["gid"] as? String ?? ""
             let error = dict["error"] as? String ?? ""
             onGroupRemoved?(gid, error)
+        case "group-dissolved":
+            let gid = dict["gid"] as? String ?? ""
+            onGroupDissolved?(gid)
         case "group-renamed":
             let gid = dict["gid"] as? String ?? ""
             if let gDict = dict["group"] as? [String: Any],
@@ -363,6 +368,12 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                let mData = try? JSONSerialization.data(withJSONObject: moments),
                let list = try? decoder.decode([Moment].self, from: mData) {
                 onMomentsUpdate?(list)
+            }
+        case "moment-posted":
+            if let mDict = dict["moment"] as? [String: Any],
+               let mData = try? JSONSerialization.data(withJSONObject: mDict),
+               let moment = try? decoder.decode(Moment.self, from: mData) {
+                onMomentPosted?(moment)
             }
         case "max-online":
             let max = dict["maxOnline"] as? Int ?? 0
@@ -453,24 +464,4 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
 import Foundation
 
-final class AppLogger {
-    static let shared = AppLogger()
-    private(set) var logs: [String] = []
-    private let maxLogs = 100
-    
-    func log(_ message: String) {
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        let line = "[\(timestamp)] \(message)"
-        DispatchQueue.main.async {
-            self.logs.insert(line, at: 0)
-            if self.logs.count > self.maxLogs {
-                self.logs = Array(self.logs.prefix(self.maxLogs))
-            }
-        }
-        print(line)
-    }
-    
-    func clear() {
-        logs.removeAll()
-    }
-}
+// AppLogger 已迁移至 SecureLogger.swift

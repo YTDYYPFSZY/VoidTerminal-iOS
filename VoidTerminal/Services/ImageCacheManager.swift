@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import CommonCrypto
 
 // MARK: - 图片缓存管理器（内存 + 磁盘双层缓存）
 /// 统一为头像和消息图片提供缓存服务
@@ -193,6 +194,3 @@ extension String {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
-
-// 引入 CommonCrypto 做 MD5
-import CommonCrypto

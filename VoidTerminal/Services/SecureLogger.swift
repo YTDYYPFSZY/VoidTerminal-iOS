@@ -1,0 +1,209 @@
+import Foundation
+import Security
+import CryptoKit
+
+/// 加密日志管理器
+/// 日志从产生时即使用 RSA 公钥加密存储，App 内不显示日志内容
+/// 导出 .vtlog 文件后，管理员使用私钥解密查看
+final class SecureLogger {
+    static let shared = SecureLogger()
+    
+    // MARK: - RSA 公钥（Base64 编码，用于加密日志）
+    private static let publicKeyBase64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq5SCCBBTfJ1Rl9SfPekFzb5vtIYzuk4irSU0iUTSjyMI3s1dfH3Pt95GCQZ6gixx22pzDZzOBZhkbuEoIN+7gjTSqimVUym48yE9JB6c37ERFB2BDNnTXWt9T36j5GzH26xSsJi3/MKgN9Ey0DO+PwuF6jmFJ+8tzcuw3jHLJkU3YhaHqVmgZIUbg2aLGZbDQDw/Ria4FbHPfimHXZo+IOLHi4VOxtQXDbL6ifJDgRecJ3Gj7IJwce/loSr9jRJCfNV8/c31y4t1EBYWOkMtju16yxXtjAEINBt3/+rHYrYDEeX0PxxADWOrpV9hmI0wRtJa47lXR/zMZJytGp6QIDAQAB"
+    
+    // MARK: - 日志条目
+    private struct LogEntry: Codable {
+        let timestamp: Double
+        let level: String
+        let module: String
+        let message: String
+    }
+    
+    // MARK: - 属性
+    private var encryptedEntries: [Data] = []  // 内存中保存加密后的日志条目
+    private let maxEntries = 500
+    private let fileManager = FileManager.default
+    
+    // 日志文件存储路径
+    private var logDirectoryURL: URL {
+        let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent("vt_logs")
+    }
+    
+    private var currentLogFileURL: URL {
+        let date = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+            .prefix(19)
+        return logDirectoryURL.appendingPathComponent("\(date).vtlog")
+    }
+    
+    private init() {
+        ensureLogDirectory()
+        loadExistingLogs()
+    }
+    
+    // MARK: - 公开方法
+    
+    /// 记录日志（立即加密）
+    func log(_ message: String, level: LogLevel = .info, module: String = "General", userId: String? = nil) {
+        var msg = message
+        if let uid = userId {
+            msg = "[user:\(uid)] \(message)"
+        }
+        
+        let entry = LogEntry(
+            timestamp: Date().timeIntervalSince1970,
+            level: level.rawValue,
+            module: module,
+            message: msg
+        )
+        
+        guard let jsonData = try? JSONEncoder().encode(entry) else { return }
+        
+        // 使用 RSA 公钥加密每条日志
+        guard let encrypted = encryptWithPublicKey(jsonData) else { return }
+        
+        DispatchQueue.main.async {
+            self.encryptedEntries.append(encrypted)
+            if self.encryptedEntries.count > self.maxEntries {
+                self.encryptedEntries.removeFirst(self.encryptedEntries.count - self.maxEntries)
+            }
+        }
+    }
+    
+    /// 导出加密日志文件
+    /// - Returns: 导出的文件路径
+    func exportLog() -> URL? {
+        guard !encryptedEntries.isEmpty else { return nil }
+        
+        ensureLogDirectory()
+        let fileURL = currentLogFileURL
+        
+        // 文件格式：魔数 + 版本号 + 条目数量 + 加密条目列表
+        var fileData = Data()
+        
+        // 魔数 "VTLOG" (4 bytes)
+        fileData.append("VTLOG".data(using: .ascii)!)
+        
+        // 版本号 (4 bytes, big endian)
+        var version: UInt32 = 1
+        fileData.append(Data(bytes: &version, count: 4))
+        
+        // 条目数量 (4 bytes, big endian)
+        let count = encryptedEntries.count
+        var entryCount: UInt32 = UInt32(count)
+        fileData.append(Data(bytes: &entryCount, count: 4))
+        
+        // 每条加密日志：长度(4 bytes) + 加密数据
+        for entry in encryptedEntries {
+            var length: UInt32 = UInt32(entry.count)
+            fileData.append(Data(bytes: &length, count: 4))
+            fileData.append(entry)
+        }
+        
+        do {
+            try fileData.write(to: fileURL, options: .completeFileProtection)
+            return fileURL
+        } catch {
+            return nil
+        }
+    }
+    
+    /// 清除所有日志
+    func clearLogs() {
+        encryptedEntries.removeAll()
+        // 删除所有日志文件
+        if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
+            for file in files {
+                try? fileManager.removeItem(at: file)
+            }
+        }
+    }
+    
+    /// 获取当前日志条数（用于界面显示）
+    var logCount: Int {
+        return encryptedEntries.count
+    }
+    
+    // MARK: - 私有方法
+    
+    private func ensureLogDirectory() {
+        if !fileManager.fileExists(atPath: logDirectoryURL.path) {
+            try? fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
+        }
+    }
+    
+    private func loadExistingLogs() {
+        // 启动时不加载旧日志文件，每次从空开始
+        // 如需加载历史日志，可在此实现
+    }
+    
+    /// 使用 RSA 公钥加密数据
+    private func encryptWithPublicKey(_ data: Data) -> Data? {
+        guard let publicKeyData = Data(base64Encoded: SecureLogger.publicKeyBase64) else {
+            return nil
+        }
+        
+        do {
+            let publicKey = try SecKeyCreateWithData(
+                publicKeyData as CFData,
+                [
+                    kSecAttrKeyType: kSecAttrKeyTypeRSA,
+                    kSecAttrKeyClass: kSecAttrKeyClassPublic,
+                    kSecAttrKeySizeInBits: 2048
+                ] as CFDictionary,
+                nil
+            )
+            
+            guard let key = publicKey else { return nil }
+            
+            // RSA 加密（使用 PKCS1 填充，因为 CryptoKit 的 RSA 不支持直接加密大数据）
+            // 对于较长的日志，分段加密
+            let maxChunkSize = 214  // RSA 2048 with PKCS1: max 245 bytes, leave margin
+            var encryptedData = Data()
+            
+            if data.count <= maxChunkSize {
+                // 短数据直接加密
+                guard let encrypted = SecKeyCreateEncryptedData(
+                    key,
+                    .rsaEncryptionPKCS1,
+                    data as CFData,
+                    nil
+                ) else { return nil }
+                return encrypted as Data
+            } else {
+                // 长数据分段加密
+                var offset = 0
+                while offset < data.count {
+                    let chunkEnd = min(offset + maxChunkSize, data.count)
+                    let chunk = data[offset..<chunkEnd]
+                    
+                    guard let encryptedChunk = SecKeyCreateEncryptedData(
+                        key,
+                        .rsaEncryptionPKCS1,
+                        chunk as CFData,
+                        nil
+                    ) else { return nil }
+                    
+                    // 写入分块长度 + 加密数据
+                    var chunkLen: UInt32 = UInt32(encryptedChunk as Data).count
+                    encryptedData.append(Data(bytes: &chunkLen, count: 4))
+                    encryptedData.append(encryptedChunk as Data)
+                    
+                    offset = chunkEnd
+                }
+                return encryptedData
+            }
+        } catch {
+            return nil
+        }
+    }
+    
+    // MARK: - 日志级别
+    enum LogLevel: String {
+        case debug = "DEBUG"
+        case info = "INFO"
+        case warn = "WARN"
+        case error = "ERROR"
+    }
+}

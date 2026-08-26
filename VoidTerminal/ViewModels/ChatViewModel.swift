@@ -422,9 +422,9 @@ final class ChatViewModel: ObservableObject {
         guard let room = currentRoom, !text.isEmpty || !images.isEmpty else { return }
 
         // 防重复发送兜底：3秒内相同内容不重复发送
-        let now = Int(Date().timeIntervalSince1970 * 1000)
+        let now = Int(Date().timeIntervalSince1970)
         let contentHash = "\(text)|\(images.sorted().joined(separator: ","))"
-        if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3000 {
+        if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3 {
             return
         }
         lastSentContentHash = contentHash

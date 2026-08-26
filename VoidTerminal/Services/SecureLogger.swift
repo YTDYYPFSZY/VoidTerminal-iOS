@@ -1,6 +1,5 @@
 import Foundation
 import Security
-import CryptoKit
 
 /// 加密日志管理器
 /// 日志从产生时即使用 RSA 公钥加密存储，App 内不显示日志内容
@@ -144,58 +143,52 @@ final class SecureLogger {
             return nil
         }
         
-        do {
-            let publicKey = try SecKeyCreateWithData(
-                publicKeyData as CFData,
-                [
-                    kSecAttrKeyType: kSecAttrKeyTypeRSA,
-                    kSecAttrKeyClass: kSecAttrKeyClassPublic,
-                    kSecAttrKeySizeInBits: 2048
-                ] as CFDictionary,
+        guard let key = SecKeyCreateWithData(
+            publicKeyData as CFData,
+            [
+                kSecAttrKeyType: kSecAttrKeyTypeRSA,
+                kSecAttrKeyClass: kSecAttrKeyClassPublic,
+                kSecAttrKeySizeInBits: 2048
+            ] as CFDictionary,
+            nil
+        ) else { return nil }
+        
+        // RSA 加密（PKCS1 填充），较长日志分段加密
+        let maxChunkSize = 214  // RSA 2048 with PKCS1: max 245 bytes, leave margin
+        
+        if data.count <= maxChunkSize {
+            // 短数据直接加密
+            guard let encrypted = SecKeyCreateEncryptedData(
+                key,
+                .rsaEncryptionPKCS1,
+                data as CFData,
                 nil
-            )
-            
-            guard let key = publicKey else { return nil }
-            
-            // RSA 加密（使用 PKCS1 填充，因为 CryptoKit 的 RSA 不支持直接加密大数据）
-            // 对于较长的日志，分段加密
-            let maxChunkSize = 214  // RSA 2048 with PKCS1: max 245 bytes, leave margin
+            ) else { return nil }
+            return encrypted as Data
+        } else {
+            // 长数据分段加密
             var encryptedData = Data()
-            
-            if data.count <= maxChunkSize {
-                // 短数据直接加密
-                guard let encrypted = SecKeyCreateEncryptedData(
+            var offset = 0
+            while offset < data.count {
+                let chunkEnd = min(offset + maxChunkSize, data.count)
+                let chunk = data[offset..<chunkEnd]
+                
+                guard let encryptedChunk = SecKeyCreateEncryptedData(
                     key,
                     .rsaEncryptionPKCS1,
-                    data as CFData,
+                    chunk as CFData,
                     nil
                 ) else { return nil }
-                return encrypted as Data
-            } else {
-                // 长数据分段加密
-                var offset = 0
-                while offset < data.count {
-                    let chunkEnd = min(offset + maxChunkSize, data.count)
-                    let chunk = data[offset..<chunkEnd]
-                    
-                    guard let encryptedChunk = SecKeyCreateEncryptedData(
-                        key,
-                        .rsaEncryptionPKCS1,
-                        chunk as CFData,
-                        nil
-                    ) else { return nil }
-                    
-                    // 写入分块长度 + 加密数据
-                    var chunkLen: UInt32 = UInt32(encryptedChunk as Data).count
-                    encryptedData.append(Data(bytes: &chunkLen, count: 4))
-                    encryptedData.append(encryptedChunk as Data)
-                    
-                    offset = chunkEnd
-                }
-                return encryptedData
+                
+                let chunkData = encryptedChunk as Data
+                // 写入分块长度 + 加密数据
+                var chunkLen: UInt32 = UInt32(chunkData.count)
+                encryptedData.append(Data(bytes: &chunkLen, count: 4))
+                encryptedData.append(chunkData)
+                
+                offset = chunkEnd
             }
-        } catch {
-            return nil
+            return encryptedData
         }
     }
     

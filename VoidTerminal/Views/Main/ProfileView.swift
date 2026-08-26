@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var showAdmin = false
     @State private var showServerConfig = false
     @State private var showDebugLog = false
+    @State private var showChangelog = false
     @State private var avatarItem: PhotosPickerItem?
 
     private let api = APIService.shared
@@ -112,6 +113,8 @@ struct ProfileView: View {
                             menuButton(title: "服务器设置") { showServerConfig = true }
                             menuButton(title: "🔍 调试日志") { showDebugLog = true }
 
+                            menuButton(title: "📋 更新日志") { showChangelog = true }
+
                             Button {
                                 appState.logout()
                             } label: {
@@ -126,6 +129,19 @@ struct ProfileView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+
+                        // 版本号
+                        Spacer().frame(height: 24)
+                        VStack(spacing: 4) {
+                            Text("虚空终端")
+                                .font(.vt(size: 12))
+                                .foregroundColor(Color.vtTextDim)
+                            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                                .font(.vt(size: 11))
+                                .foregroundColor(Color.vtTextDim.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -153,6 +169,9 @@ struct ProfileView: View {
             .sheet(isPresented: $showServerConfig) { ServerConfigView() }
             .sheet(isPresented: $showDebugLog) {
                 DebugLogView()
+            }
+            .sheet(isPresented: $showChangelog) {
+                ChangelogView()
             }
         }
     }
@@ -422,6 +441,126 @@ struct DebugLogView: View {
             .onDisappear {
                 timer?.invalidate()
                 timer = nil
+            }
+        }
+    }
+}
+
+// MARK: - Changelog
+struct ChangelogView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private struct VersionLog {
+        let version: String
+        let date: String
+        let badge: String
+        let badgeColor: String
+        let items: [String]
+    }
+
+    private let logs: [VersionLog] = [
+        VersionLog(
+            version: "v2.1",
+            date: "2026-08-26",
+            badge: "最新",
+            badgeColor: "07c160",
+            items: [
+                "消息发送者用户名显示：大厅和群聊中所有非自己、非系统消息均显示发送者用户名，与网页版行为一致",
+                "角色标签补齐：新增「站长」红色标签和「群主」橙色标签，保留原有 BOT 蓝色标签",
+                "系统消息过滤：系统通知不再显示空用户名标签",
+                "新增「更新日志」界面，可在「我的」页面查看各版本更新内容",
+                "「我的」页面底部显示当前应用版本号"
+            ]
+        ),
+        VersionLog(
+            version: "v2.0",
+            date: "2026-08-25",
+            badge: "安全",
+            badgeColor: "f59e0b",
+            items: [
+                "传输安全：默认地址改为 HTTPS，删除 ATS 豁免，实现 SSL Pinning 证书校验",
+                "Token 存储：从 UserDefaults 明文迁移至 Keychain 硬件级加密，不上传 iCloud",
+                "聊天记录加密：好友列表、群组、大厅/私聊/群聊消息全部 AES-256-GCM 加密存储",
+                "密码策略：注册时强制 8 位以上且包含字母和数字，拒绝弱密码",
+                "新增 SecurityHelper 安全模块（KeychainHelper + SecureStorage + PasswordValidator）",
+                "GitHub Actions 自动编译配置"
+            ]
+        ),
+        VersionLog(
+            version: "v1.0",
+            date: "首次发布",
+            badge: "初始",
+            badgeColor: "6b7280",
+            items: [
+                "虚空终端 iOS 客户端首个版本",
+                "支持全局大厅聊天、私聊、群聊",
+                "支持好友系统、朋友圈（Moments）",
+                "支持消息撤回、输入状态、已读回执",
+                "支持群主管理（改名、解散、踢人、公告）",
+                "支持站长管理（封禁、公告、大厅管理）",
+                "支持日间/夜间模式切换、字体大小调节",
+                "支持头像上传、用户名/密码修改",
+                "支持服务器地址自定义配置"
+            ]
+        )
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.vtBG.ignoresSafeArea()
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(logs.indices, id: \.self) { idx in
+                            let log = logs[idx]
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Text(log.version)
+                                        .font(.vt(size: 18, weight: .bold))
+                                        .foregroundColor(.vtText)
+                                    Text(log.badge)
+                                        .font(.vt(size: 10, weight: .semibold))
+                                        .foregroundColor(.vtText)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(Color(hex: log.badgeColor))
+                                        .cornerRadius(4)
+                                    Spacer()
+                                    Text(log.date)
+                                        .font(.vt(size: 12))
+                                        .foregroundColor(.vtTextDim)
+                                }
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(log.items.indices, id: \.self) { i in
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Text("•")
+                                                .font(.vt(size: 14))
+                                                .foregroundColor(Color(hex: log.badgeColor))
+                                            Text(log.items[i])
+                                                .font(.vt(size: 13))
+                                                .foregroundColor(.vtText)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.vtPanel)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vtBorder, lineWidth: 1))
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+            .navigationTitle("更新日志")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") { dismiss() }
+                        .foregroundColor(Color(hex: "07c160"))
+                }
             }
         }
     }

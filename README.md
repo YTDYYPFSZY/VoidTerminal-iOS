@@ -100,4 +100,25 @@ WebSocket 地址会自动从 HTTP 地址推导（http→ws, https→wss）。
 
 - iOS 16.0+
 - Xcode 15.0+
- 
+
+ 版本历史
+
+v2.1（消息显示修复版）- 2026-08-26
+
+修复：大厅和群聊中所有非自己、非系统消息均显示发送者用户名，与网页版行为一致
+新增：角色标签补齐，新增「站长」红色标签和「群主」橙色标签，保留原有 BOT 蓝色标签
+新增：「我的」页面底部显示当前应用版本号
+新增：「我的」页面新增「📋 更新日志」入口，可查看各版本完整更新内容
+v2.0（安全加固版）- 2026-08-25
+
+传输安全：默认地址从 http://buer.kdns.fr 改为 https://buer.kdns.fr；删除 ATS 豁免；APIService 和 WebSocketService 实现严格 SSL Pinning，验证证书链和域名
+Token 存储：Token 从 UserDefaults 明文迁移至 Keychain（kSecAttrAccessibleWhenUnlockedThisDeviceOnly，不上传 iCloud）
+聊天记录加密：好友列表、群组列表、大厅/私聊/群聊消息全部使用 AES-256-GCM 加密存储；256 位密钥存 Keychain
+密码策略：注册时强制 8 位以上且包含字母和数字，拒绝弱密码
+新增 SecurityHelper.swift：KeychainHelper + SecureStorage(AES-256-GCM) + PasswordValidator 三模块
+GitHub Actions 自动编译：Fork 仓库后可通过 Actions 直接云编译输出未签名 IPA
+v1.0（首版）
+
+首个公开版本，类微信简约风 SwiftUI 原生客户端
+支持大厅、私聊、群聊、好友、朋友圈、图片消息、消息撤回、头像更换、主题切换、站长管理等全部基础功能
+无第三方依赖，纯原生实现

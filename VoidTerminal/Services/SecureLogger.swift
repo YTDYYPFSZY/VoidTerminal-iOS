@@ -189,8 +189,8 @@ final class SecureLogger {
         defer { try? handle.close() }
         
         // 读取当前 count
-        handle.seek(toOffset: 9)
-        let countData = handle.readData(ofLength: 4)
+        try? handle.seek(toOffset: 9)
+        let countData = (try? handle.readData(ofLength: 4)) ?? Data()
         var currentCount: UInt32 = 0
         if countData.count == 4 {
             currentCount = countData.withUnsafeBytes { ptr in
@@ -200,7 +200,7 @@ final class SecureLogger {
         currentCount += 1
         
         // 写回 count
-        handle.seek(toOffset: 9)
+        try? handle.seek(toOffset: 9)
         var newCountLE = currentCount.littleEndian
         try? handle.write(Data(bytes: &newCountLE, count: 4))
         

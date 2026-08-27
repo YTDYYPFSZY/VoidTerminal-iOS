@@ -53,16 +53,36 @@ final class APIService: NSObject {
 
     // MARK: - Auth
     func register(username: String, password: String) async throws -> RegisterResponse {
-        try await post("/api/register", body: ["username": username, "password": password])
+        do {
+            let resp: RegisterResponse = try await post("/api/register", body: ["username": username, "password": password])
+            SecureLogger.shared.log("API register success: \(username)", module: "API")
+            return resp
+        } catch {
+            SecureLogger.shared.log("API register failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     func login(username: String, password: String) async throws -> LoginResponse {
-        try await post("/api/login", body: ["username": username, "password": password])
+        do {
+            let resp: LoginResponse = try await post("/api/login", body: ["username": username, "password": password])
+            SecureLogger.shared.log("API login success: \(username)", module: "API")
+            return resp
+        } catch {
+            SecureLogger.shared.log("API login failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     func me(token: String) async throws -> User {
-        let resp: MeResponse = try await post("/api/me", body: ["token": token])
-        return resp.user
+        do {
+            let resp: MeResponse = try await post("/api/me", body: ["token": token])
+            SecureLogger.shared.log("API me success: \(resp.user.username)", module: "API")
+            return resp.user
+        } catch {
+            SecureLogger.shared.log("API me failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     // MARK: - Avatar
@@ -127,26 +147,33 @@ final class APIService: NSObject {
 
     // MARK: - 搜索群聊
     func searchGroups(keyword: String) async throws -> [SearchGroup] {
-        let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? keyword
-        let url = URL(string: ServerConfig.shared.baseURL + "/api/search-groups?keyword=" + encoded)!
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+        do {
+            let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? keyword
+            let url = URL(string: ServerConfig.shared.baseURL + "/api/search-groups?keyword=" + encoded)!
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            if http.statusCode >= 400 {
+                throw APIError.httpError(http.statusCode)
+            }
+            let result = try JSONDecoder().decode(SearchGroupResponse.self, from: data)
+            if result.ok == false {
+                throw APIError.serverError(result.error ?? "搜索失败")
+            }
+            SecureLogger.shared.log("API searchGroups success: keyword=\(keyword) found=\(result.groups?.count ?? 0)", module: "API")
+            return result.groups ?? []
+        } catch {
+            SecureLogger.shared.log("API searchGroups failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
         }
-        if http.statusCode >= 400 {
-            throw APIError.httpError(http.statusCode)
-        }
-        let result = try JSONDecoder().decode(SearchGroupResponse.self, from: data)
-        if result.ok == false {
-            throw APIError.serverError(result.error ?? "搜索失败")
-        }
-        return result.groups ?? []
     }
 
     // MARK: - 登出
     func logout() async {
+        SecureLogger.shared.log("API logout", module: "API")
         let _: [String: Bool]? = try? await post("/api/logout", body: [:])
     }
 }

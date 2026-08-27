@@ -120,10 +120,12 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     }
 
     func sendGroupApply(gid: String) {
+        SecureLogger.shared.log("send group-apply gid=\(gid)", module: "WebSocket")
         send(["type": "group-apply", "gid": gid])
     }
     
     func sendGroupApplyRespond(applyId: String, action: String) {
+        SecureLogger.shared.log("send group-apply-respond applyId=\(applyId) action=\(action)", module: "WebSocket")
         send(["type": "group-apply-respond", "applyId": applyId, "action": action])
     }
     
@@ -134,6 +136,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     }
 
     func recall(room: String, id: String, to: String? = nil, gid: String? = nil) {
+        SecureLogger.shared.log("recall room=\(room) id=\(id)", module: "WebSocket")
         var dict: [String: Any] = ["type": "recall", "room": room, "id": id]
         if let to = to { dict["to"] = to }
         if let gid = gid { dict["gid"] = gid }
@@ -141,54 +144,67 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     }
 
     func createGroup(name: String, members: [String]) {
+        SecureLogger.shared.log("create-group name=\(name) membersCount=\(members.count)", module: "WebSocket")
         send(["type": "create-group", "name": name, "members": members])
     }
 
     func sendFriendRequest(username: String) {
+        SecureLogger.shared.log("send friend-request username=\(username)", module: "WebSocket")
         send(["type": "friend-request", "username": username])
     }
 
     func respondRequest(requestId: String, action: String) {
+        SecureLogger.shared.log("respond request requestId=\(requestId) action=\(action)", module: "WebSocket")
         send(["type": "request-respond", "requestId": requestId, "action": action])
     }
 
     func unfriend(userId: String) {
+        SecureLogger.shared.log("unfriend userId=\(userId)", module: "WebSocket")
         send(["type": "unfriend", "userId": userId])
     }
 
     func groupRename(gid: String, name: String) {
+        SecureLogger.shared.log("group-rename gid=\(gid) newName=\(name)", module: "WebSocket")
         send(["type": "group-rename", "gid": gid, "name": name])
     }
 
     func groupRemoveMember(gid: String, userId: String) {
+        SecureLogger.shared.log("group-remove-member gid=\(gid) userId=\(userId)", module: "WebSocket")
         send(["type": "group-remove-member", "gid": gid, "userId": userId])
     }
 
     func groupLeave(gid: String) {
+        SecureLogger.shared.log("group-leave gid=\(gid)", module: "WebSocket")
         send(["type": "group-leave", "gid": gid])
     }
 
     func groupAddMembers(gid: String, members: [String]) {
+        SecureLogger.shared.log("group-add-members gid=\(gid) membersCount=\(members.count)", module: "WebSocket")
         send(["type": "group-add-members", "gid": gid, "members": members])
     }
 
     func groupDissolve(gid: String) {
+        SecureLogger.shared.log("group-dissolve gid=\(gid)", module: "WebSocket")
         send(["type": "group-dissolve", "gid": gid])
     }
 
     func momentLike(momentId: String) {
+        SecureLogger.shared.log("moment-like momentId=\(momentId)", module: "WebSocket")
         send(["type": "moment-like", "mid": momentId])
     }
 
     func momentComment(momentId: String, text: String) {
+        SecureLogger.shared.log("moment-comment momentId=\(momentId) textLen=\(text.count)", module: "WebSocket")
         send(["type": "moment-comment", "mid": momentId, "text": text])
     }
 
     func momentDelete(momentId: String) {
+        SecureLogger.shared.log("moment-delete momentId=\(momentId)", module: "WebSocket")
         send(["type": "moment-delete", "mid": momentId])
     }
 
     func momentCommentDelete(momentId: String, commentId: String) {
+        SecureLogger.shared.log("moment-comment-delete momentId=\(momentId) commentId=\(commentId)", module: "WebSocket")
         send(["type": "moment-comment-delete", "mid": momentId, "cid": commentId])
     }
 

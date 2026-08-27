@@ -36,7 +36,8 @@ struct ChatView: View {
             if let peer = chatVM.user(by: peerId) { return [peer] }
             return []
         case .global:
-            return chatVM.friends
+            // 大厅不支持 @ 输入框弹出成员列表，改为长按头像@
+            return []
         }
     }
 
@@ -192,6 +193,12 @@ struct ChatView: View {
 
     private func handleTextChange(_ text: String) {
         messageText = text
+        // 大厅（global）不支持 @ 弹出成员列表，只能长按头像@
+        if case .global = room {
+            showMentionPanel = false
+            mentionSearchText = ""
+            return
+        }
         if let lastChar = text.last, lastChar == "@" {
             showMentionPanel = true
             mentionSearchText = ""
@@ -279,13 +286,17 @@ struct ChatView: View {
             if !isMe {
                 AvatarView(name: msg.fromName ?? "?", avatarURL: msg.fromAvatar, size: 36)
                     .onLongPressGesture(minimumDuration: 0.3) {
-                        // 群聊中长按成员头像，自动@该成员
-                        if case .group = room, let name = msg.fromName {
+                        // 群聊 / 大厅：长按成员头像，自动@该成员
+                        switch room {
+                        case .group, .global:
+                            guard let name = msg.fromName, !name.isEmpty, msg.from != "system" else { return }
                             if !messageText.isEmpty && !messageText.hasSuffix(" ") {
                                 messageText += " "
                             }
                             messageText += "@" + name + " "
                             isInputFocused = true
+                        default:
+                            break
                         }
                     }
             }

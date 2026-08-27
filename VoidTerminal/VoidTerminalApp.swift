@@ -4,6 +4,7 @@ import UIKit
 @main
 struct VoidTerminalApp: App {
     @StateObject private var appState = AppState()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // 配置全局 URLCache：内存 20MB + 磁盘 200MB
@@ -14,6 +15,9 @@ struct VoidTerminalApp: App {
             diskPath: "url_cache"
         )
         URLCache.shared = cache
+
+        // 启动网络状态监控
+        NetworkMonitor.shared.start()
     }
 
     var body: some Scene {
@@ -21,6 +25,18 @@ struct VoidTerminalApp: App {
             RootView()
                 .environmentObject(appState)
                 .preferredColorScheme(appState.theme == .dark ? .dark : .light)
+                .onChange(of: scenePhase) { newPhase in
+                    switch newPhase {
+                    case .active:
+                        SecureLogger.shared.log("app scene phase: active (enter foreground)", module: "App")
+                    case .inactive:
+                        SecureLogger.shared.log("app scene phase: inactive", module: "App")
+                    case .background:
+                        SecureLogger.shared.log("app scene phase: background (enter background)", module: "App")
+                    @unknown default:
+                        SecureLogger.shared.log("app scene phase: unknown", module: "App")
+                    }
+                }
         }
     }
 }

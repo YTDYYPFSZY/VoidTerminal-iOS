@@ -46,9 +46,8 @@ final class APIService: NSObject {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
-        // 使用 .default 配置保留 Cookie/缓存存储（logout 依赖 Cookie）
-        self.session = URLSession(configuration: config, delegate: nil, delegateQueue: nil)
         super.init()
+        self.session = URLSession(configuration: config, delegate: nil, delegateQueue: nil)
     }
 
     // MARK: - Auth

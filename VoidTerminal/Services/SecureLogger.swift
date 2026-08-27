@@ -86,7 +86,7 @@ final class SecureLogger {
         fileData.append("VTLOG".data(using: .ascii)!)
         
         // 版本号 (4 bytes, little endian)
-        var version: UInt32 = 1.littleEndian
+        var version: UInt32 = UInt32(1).littleEndian
         fileData.append(Data(bytes: &version, count: 4))
         
         // 条目数量 (4 bytes, little endian)

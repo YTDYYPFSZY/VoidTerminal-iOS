@@ -59,6 +59,7 @@ struct GroupSettingsView: View {
                                 Spacer()
                                 if isOwner && memberId != group.owner {
                                     Button(role: .destructive) {
+                                        SecureLogger.shared.log("remove member gid=\(group.id) userId=\(memberId)", module: "GroupSettings")
                                         WebSocketService.shared.groupRemoveMember(gid: group.id, userId: memberId)
                                     } label: {
                                         Image(systemName: "minus.circle.fill")
@@ -89,6 +90,7 @@ struct GroupSettingsView: View {
                         }
 
                         Button(role: .destructive) {
+                            SecureLogger.shared.log("dissolve group gid=\(group.id)", module: "GroupSettings")
                             WebSocketService.shared.groupDissolve(gid: group.id)
                             dismiss()
                         } label: {
@@ -99,6 +101,7 @@ struct GroupSettingsView: View {
                 } else {
                     Section {
                         Button(role: .destructive) {
+                            SecureLogger.shared.log("leave group gid=\(group.id)", module: "GroupSettings")
                             WebSocketService.shared.groupLeave(gid: group.id)
                             dismiss()
                         } label: {
@@ -126,6 +129,7 @@ struct GroupSettingsView: View {
                     }
                 Button("确定") {
                     if !newName.isEmpty {
+                        SecureLogger.shared.log("rename group gid=\(group.id) newName=\(newName)", module: "GroupSettings")
                         WebSocketService.shared.groupRename(gid: group.id, name: newName)
                     }
                 }
@@ -137,6 +141,7 @@ struct GroupSettingsView: View {
             }
             .onChange(of: avatarItem) { newValue in
                 guard let newValue = newValue else { return }
+                SecureLogger.shared.log("change group avatar gid=\(group.id)", module: "GroupSettings")
                 Task {
                     if let data = try? await newValue.loadTransferable(type: Data.self),
                        let token = UserDefaults.standard.string(forKey: "vt_token") {
@@ -194,6 +199,7 @@ struct AddGroupMembersView: View {
                 Section {
                     Button("确定添加") {
                         if !selected.isEmpty {
+                            SecureLogger.shared.log("add members gid=\(group.id) count=\(selected.count)", module: "GroupSettings")
                             WebSocketService.shared.groupAddMembers(gid: group.id, members: Array(selected))
                             dismiss()
                         }

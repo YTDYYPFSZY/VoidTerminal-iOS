@@ -64,6 +64,14 @@ struct ChatView: View {
                 .onAppear {
                     scrollProxy = proxy
                     chatVM.currentRoom = room
+                    // 进入聊天室日志
+                    let roomDesc: String
+                    switch room {
+                    case .global: roomDesc = "global 大厅"
+                    case .dm(_, let peerName): roomDesc = "dm \(peerName)"
+                    case .group(_, let name): roomDesc = "group \(name)"
+                    }
+                    SecureLogger.shared.log("enter chat room: \(roomDesc)", module: "UI")
                     // 打开对话时滚动到最新消息
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         if let last = messages.last {
@@ -103,6 +111,13 @@ struct ChatView: View {
             if let msg = contextMenuMessage {
                 if msg.isFromMe {
                     Button("撤回", role: .destructive) {
+                        let roomDesc: String
+                        switch room {
+                        case .global: roomDesc = "global"
+                        case .dm: roomDesc = "dm"
+                        case .group: roomDesc = "group"
+                        }
+                        SecureLogger.shared.log("recall message room=\(roomDesc) id=\(msg.id)", module: "Chat")
                         chatVM.recallMessage(msg)
                         chatVM.removeMessageLocally(msg)
                         contextMenuMessage = nil
@@ -124,6 +139,7 @@ struct ChatView: View {
         .photosPicker(isPresented: $showImagePicker, selection: $imagePicker, matching: .images)
         .onChange(of: imagePicker) { newValue in
             guard let newValue = newValue else { return }
+            SecureLogger.shared.log("image picker selected", module: "UI")
             Task {
                 if let data = try? await newValue.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
@@ -135,6 +151,7 @@ struct ChatView: View {
         .confirmationDialog("删除联系人", isPresented: $showDeleteConfirm) {
             Button("删除", role: .destructive) {
                 if case .dm(let peerId, _) = room {
+                    SecureLogger.shared.log("delete friend userId=\(peerId)", module: "Chat")
                     WebSocketService.shared.unfriend(userId: peerId)
                     dismiss()
                 }

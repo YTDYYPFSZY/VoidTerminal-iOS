@@ -103,8 +103,16 @@ final class SecureLogger {
         
         do {
             try fileData.write(to: fileURL, options: .completeFileProtection)
+            SecureLogger.shared.log("exported \(encryptedEntries.count) entries to \(fileURL.lastPathComponent)", module: "Logger")
+            // 清理旧的 .vtlog 文件，避免下次启动重复加载
+            if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
+                for oldFile in files where oldFile.pathExtension == "vtlog" && oldFile != fileURL {
+                    try? fileManager.removeItem(at: oldFile)
+                }
+            }
             return fileURL
         } catch {
+            SecureLogger.shared.log("export failed: \(error.localizedDescription)", level: .error, module: "Logger")
             return nil
         }
     }
@@ -134,8 +142,45 @@ final class SecureLogger {
     }
     
     private func loadExistingLogs() {
-        // 启动时不加载旧日志文件，每次从空开始
-        // 如需加载历史日志，可在此实现
+        // 启动时从磁盘加载所有 .vtlog 文件的历史条目
+        guard let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) else { return }
+        
+        let vtlogFiles = files.filter { $0.pathExtension == "vtlog" }.sorted {
+            ($0.lastPathComponent) < ($1.lastPathComponent)
+        }
+        
+        for fileURL in vtlogFiles {
+            guard let fileData = try? Data(contentsOf: fileURL) else { continue }
+            
+            // 解析文件格式：VTLOG(5B) + version(4B) + count(4B) + entries
+            guard fileData.count >= 13 else { continue }
+            
+            let magic = String(data: fileData.subdata(in: 0..<5), encoding: .ascii)
+            guard magic == "VTLOG" else { continue }
+            
+            // 读取版本号和条目数（小端序）
+            let version = fileData.subdata(in: 5..<9).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let count = fileData.subdata(in: 9..<13).withUnsafeBytes { $0.load(as: UInt32.self) }
+            
+            guard version == 1 else { continue }
+            
+            var offset = 13
+            for _ in 0..<count {
+                guard offset + 4 <= fileData.count else { break }
+                let entryLen = fileData.subdata(in: offset..<offset+4).withUnsafeBytes { $0.load(as: UInt32.self) }
+                offset += 4
+                
+                guard offset + Int(entryLen) <= fileData.count else { break }
+                let entryData = fileData.subdata(in: offset..<offset+Int(entryLen))
+                encryptedEntries.append(entryData)
+                offset += Int(entryLen)
+            }
+        }
+        
+        // 去重并限制最大条数
+        if encryptedEntries.count > maxEntries {
+            encryptedEntries = Array(encryptedEntries.suffix(maxEntries))
+        }
     }
     
     /// 使用 RSA 公钥加密数据

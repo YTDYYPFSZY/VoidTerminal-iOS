@@ -144,9 +144,10 @@ final class SecureLogger {
     /// 从 Data 的指定偏移位置读取小端序 UInt32
     private func readUInt32LE(from data: Data, at offset: Int) -> UInt32 {
         guard offset + 4 <= data.count else { return 0 }
-        var value: UInt32 = 0
-        data.copyBytes(to: UnsafeMutableBufferPointer(start: &value, count: 1), from: offset..<offset+4)
-        return UInt32(littleEndian: value)
+        return data.withUnsafeBytes { ptr in
+            let raw = ptr.baseAddress!.advanced(by: offset)
+            return raw.assumingMemoryBound(to: UInt32.self).pointee.littleEndian
+        }
     }
 
     private func loadExistingLogs() {

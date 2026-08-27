@@ -40,7 +40,7 @@ final class APIService: NSObject {
     static let shared = APIService()
 
     /// 自定义 URLSession，使用 delegate 做严格证书验证
-    private let session: URLSession
+    private var session: URLSession!
 
     private override init() {
         let config = URLSessionConfiguration.default

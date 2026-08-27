@@ -37,14 +37,15 @@ final class SecureLogger {
     private var activeLogFileURL: URL
     
     private init() {
+        // 先初始化 activeLogFileURL（必须在访问其他 self 属性之前）
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let date = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
             .prefix(19)
-        activeLogFileURL = logDirectoryURL.appendingPathComponent("\(date).vtlog")
+        activeLogFileURL = docs.appendingPathComponent("vt_logs/\(date).vtlog")
+        
         ensureLogDirectory()
-        // 先加载磁盘历史（含当前活动文件已有条目），新日志再追加
         loadExistingLogs()
-        // 确保活动文件存在（若已存在则不重复写头，保留原 count）
         writeHeaderIfNeeded()
     }
     
@@ -189,8 +190,8 @@ final class SecureLogger {
         defer { try? handle.close() }
         
         // 读取当前 count
-        try? handle.seek(toOffset: 9)
-        let countData = (try? handle.readData(ofLength: 4)) ?? Data()
+        handle.seek(toOffset: 9)
+        let countData = handle.readData(ofLength: 4)
         var currentCount: UInt32 = 0
         if countData.count == 4 {
             currentCount = countData.withUnsafeBytes { ptr in
@@ -200,13 +201,13 @@ final class SecureLogger {
         currentCount += 1
         
         // 写回 count
-        try? handle.seek(toOffset: 9)
+        handle.seek(toOffset: 9)
         var newCountLE = currentCount.littleEndian
-        try? handle.write(Data(bytes: &newCountLE, count: 4))
+        handle.write(Data(bytes: &newCountLE, count: 4))
         
         // 追加条目到末尾
-        try? handle.seekToEnd()
-        try? handle.write(chunk)
+        handle.seekToEnd()
+        handle.write(chunk)
     }
     
     private func loadExistingLogs() {

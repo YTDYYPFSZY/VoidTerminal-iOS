@@ -61,6 +61,7 @@ final class ChatViewModel: ObservableObject {
         if let uid = UserDefaults.standard.string(forKey: "vt_current_uid") {
             setCurrentUserId(uid)
         }
+        SecureLogger.shared.log("local storage loaded: friends=\(friends.count) groups=\(groups.count) globalMsgs=\(globalMessages.count) dmRooms=\(dmMessages.count) groupMsgs=\(groupMessages.count)", module: "Chat")
     }
     private func saveToLocal() {
         let storage = SecureStorage.shared
@@ -425,10 +426,19 @@ final class ChatViewModel: ObservableObject {
         let now = Int(Date().timeIntervalSince1970)
         let contentHash = "\(text)|\(images.sorted().joined(separator: ","))"
         if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3 {
+            SecureLogger.shared.log("send blocked by anti-duplicate lock", level: .warn, module: "Chat")
             return
         }
         lastSentContentHash = contentHash
         lastSentTimestamp = now
+        
+        let roomDesc: String
+        switch room {
+        case .global: roomDesc = "global"
+        case .dm(_, let peerName): roomDesc = "dm→\(peerName)"
+        case .group(_, let name): roomDesc = "group[\(name)]"
+        }
+        SecureLogger.shared.log("send msg [\(roomDesc)] text=\(text.prefix(30))... images=\(images.count)", module: "Chat")
 
         let tempId = "temp_" + UUID().uuidString
         var tempMsg = ChatMessage(

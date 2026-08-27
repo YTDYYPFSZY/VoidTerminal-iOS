@@ -189,7 +189,7 @@ final class SecureLogger {
         defer { try? handle.close() }
         
         // 读取当前 count
-        handle.seek(toFileOffset: 9)
+        handle.seek(toOffset: 9)
         let countData = handle.readData(ofLength: 4)
         var currentCount: UInt32 = 0
         if countData.count == 4 {
@@ -200,13 +200,13 @@ final class SecureLogger {
         currentCount += 1
         
         // 写回 count
-        handle.seek(toFileOffset: 9)
+        handle.seek(toOffset: 9)
         var newCountLE = currentCount.littleEndian
-        handle.write(Data(bytes: &newCountLE, count: 4))
+        try? handle.write(Data(bytes: &newCountLE, count: 4))
         
         // 追加条目到末尾
-        handle.seekToEndOfFile()
-        handle.write(chunk)
+        try? handle.seekToEnd()
+        try? handle.write(chunk)
     }
     
     private func loadExistingLogs() {

@@ -189,9 +189,11 @@ struct AuthView: View {
         }
         isLoading = true
         message = ""
+        SecureLogger.shared.log("register attempt: \(regUsername)", module: "Auth")
         Task {
             do {
                 _ = try await api.register(username: regUsername, password: regPassword)
+                SecureLogger.shared.log("register success: \(regUsername)", module: "Auth")
                 await MainActor.run {
                     message = "注册成功，请登录"
                     isLogin = true
@@ -199,6 +201,7 @@ struct AuthView: View {
                     isLoading = false
                 }
             } catch {
+                SecureLogger.shared.log("register failed: \(error.localizedDescription)", level: .error, module: "Auth")
                 await MainActor.run {
                     message = error.localizedDescription
                     isLoading = false

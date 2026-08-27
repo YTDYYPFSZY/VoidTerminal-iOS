@@ -142,6 +142,14 @@ struct MomentComment: Codable, Hashable, Identifiable {
         case userName = "authorName"
         case text, time
     }
+    
+    // 成员初始化器（用于乐观更新时本地创建临时评论）
+    init(user: String, userName: String?, text: String, time: Int) {
+        self.user = user
+        self.userName = userName
+        self.text = text
+        self.time = time
+    }
 }
 
 struct MomentResponse: Codable {

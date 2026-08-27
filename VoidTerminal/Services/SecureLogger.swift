@@ -24,38 +24,31 @@ final class SecureLogger {
     private let maxEntries = 500
     private let fileManager = FileManager.default
     
-    // 串行队列，保证磁盘写入线程安全
-    private let ioQueue = DispatchQueue(label: "com.voidterminal.securelogger.io")
-    
     // 日志文件存储路径
     private var logDirectoryURL: URL {
         let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return docs.appendingPathComponent("vt_logs")
     }
     
-    /// 当前活动日志文件（每次启动一个新文件）
+    /// 当前活动日志文件（每次启动/导出时一个新文件）
     private var activeLogFileURL: URL
     
     private init() {
-        // 先初始化 activeLogFileURL（必须在访问其他 self 属性之前）
+        // 直接构造路径，不访问 self 的其他属性
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let date = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
             .prefix(19)
         activeLogFileURL = docs.appendingPathComponent("vt_logs/\(date).vtlog")
         
-        // 所有文件操作放到 ioQueue 异步执行，防止阻塞或崩溃影响 App 启动
-        ioQueue.async { [weak self] in
-            guard let self = self else { return }
-            self.ensureLogDirectory()
-            self.loadExistingLogs()
-            self.writeHeaderIfNeeded()
-        }
+        ensureLogDirectory()
+        loadExistingLogs()
+        writeHeaderIfNeeded()
     }
     
     // MARK: - 公开方法
     
-    /// 记录日志（立即加密并追加写入磁盘）
+    /// 记录日志（加密并存入内存，导出时统一写盘）
     func log(_ message: String, level: LogLevel = .info, module: String = "General", userId: String? = nil) {
         var msg = message
         if let uid = userId {
@@ -72,18 +65,32 @@ final class SecureLogger {
         guard let jsonData = try? JSONEncoder().encode(entry) else { return }
         guard let encrypted = encryptWithPublicKey(jsonData) else { return }
         
-        // 内存更新（主线程，供 UI 读取 logCount）
-        DispatchQueue.main.async {
-            self.encryptedEntries.append(encrypted)
-            if self.encryptedEntries.count > self.maxEntries {
-                self.encryptedEntries.removeFirst(self.encryptedEntries.count - self.maxEntries)
-            }
+        encryptedEntries.append(encrypted)
+        if encryptedEntries.count > maxEntries {
+            encryptedEntries.removeFirst(encryptedEntries.count - maxEntries)
         }
         
-        // 磁盘追加写入（串行队列，不阻塞主线程）
-        let fileURL = activeLogFileURL
-        ioQueue.async {
-            self.appendEntryToDisk(encrypted, to: fileURL)
+        // 实时写盘，确保崩溃后日志不丢失
+        flushToDisk()
+    }
+    
+    /// 将所有内存中的加密条目写入活动日志文件
+    private func flushToDisk() {
+        do {
+            var fileData = Data()
+            fileData.append("VTLOG".data(using: .ascii)!)
+            var version: UInt32 = UInt32(1).littleEndian
+            fileData.append(Data(bytes: &version, count: 4))
+            var entryCount: UInt32 = UInt32(encryptedEntries.count).littleEndian
+            fileData.append(Data(bytes: &entryCount, count: 4))
+            for entry in encryptedEntries {
+                var length: UInt32 = UInt32(entry.count).littleEndian
+                fileData.append(Data(bytes: &length, count: 4))
+                fileData.append(entry)
+            }
+            try fileData.write(to: activeLogFileURL, options: .completeFileProtection)
+        } catch {
+            // 写盘失败时静默处理，避免日志系统本身导致崩溃
         }
     }
     
@@ -94,7 +101,6 @@ final class SecureLogger {
         
         ensureLogDirectory()
         
-        // 导出时生成一个新的文件名，先更新 activeLogFileURL，再写文件，避免日志自引用写入旧文件
         let date = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
             .prefix(19)
@@ -122,7 +128,6 @@ final class SecureLogger {
                     try? fileManager.removeItem(at: oldFile)
                 }
             }
-            // 写盘成功后再记录日志，会追加到新文件中
             SecureLogger.shared.log("exported \(count) entries to \(fileURL.lastPathComponent)", module: "Logger")
             return fileURL
         } catch {
@@ -139,7 +144,6 @@ final class SecureLogger {
                 try? fileManager.removeItem(at: file)
             }
         }
-        // 清除后重建文件头
         writeHeaderIfNeeded()
     }
     
@@ -159,70 +163,24 @@ final class SecureLogger {
     /// 如果活动日志文件不存在，写入文件头（VTLOG + version + count占位）
     private func writeHeaderIfNeeded() {
         let fileURL = activeLogFileURL
-        ioQueue.async {
-            guard !FileManager.default.fileExists(atPath: fileURL.path) else { return }
-            var data = Data()
-            data.append("VTLOG".data(using: .ascii)!)
-            var version: UInt32 = UInt32(1).littleEndian
-            data.append(Data(bytes: &version, count: 4))
-            // 条目数先写0，后续追加时不修改
-            var count: UInt32 = 0
-            data.append(Data(bytes: &count, count: 4))
-            try? data.write(to: fileURL, options: .completeFileProtection)
-        }
-    }
-    
-    /// 追加一条加密条目到磁盘文件末尾，并更新文件头中的 count
-    private func appendEntryToDisk(_ entry: Data, to fileURL: URL) {
-        var chunk = Data()
-        var length: UInt32 = UInt32(entry.count).littleEndian
-        chunk.append(Data(bytes: &length, count: 4))
-        chunk.append(entry)
-        
-        guard let handle = try? FileHandle(forWritingTo: fileURL) else {
-            // 文件不存在，创建带头部的文件，count=1
-            var data = Data()
-            data.append("VTLOG".data(using: .ascii)!)
-            var version: UInt32 = UInt32(1).littleEndian
-            data.append(Data(bytes: &version, count: 4))
-            var count: UInt32 = UInt32(1).littleEndian
-            data.append(Data(bytes: &count, count: 4))
-            data.append(chunk)
-            try? data.write(to: fileURL, options: .completeFileProtection)
-            return
-        }
-        defer { try? handle.close() }
-        
-        // 读取当前 count
-        try? handle.seek(toOffset: 9)
-        let countData = handle.readData(ofLength: 4)
-        var currentCount: UInt32 = 0
-        if countData.count == 4 {
-            currentCount = countData.withUnsafeBytes { ptr in
-                ptr.baseAddress!.assumingMemoryBound(to: UInt32.self).pointee.littleEndian
-            }
-        }
-        currentCount += 1
-        
-        // 写回 count
-        try? handle.seek(toOffset: 9)
-        var newCountLE = currentCount.littleEndian
-        handle.write(Data(bytes: &newCountLE, count: 4))
-        
-        // 追加条目到末尾
-        try? handle.seekToEnd()
-        handle.write(chunk)
+        guard !fileManager.fileExists(atPath: fileURL.path) else { return }
+        var data = Data()
+        data.append("VTLOG".data(using: .ascii)!)
+        var version: UInt32 = UInt32(1).littleEndian
+        data.append(Data(bytes: &version, count: 4))
+        var count: UInt32 = 0
+        data.append(Data(bytes: &count, count: 4))
+        try? data.write(to: fileURL, options: .completeFileProtection)
     }
     
     private func loadExistingLogs() {
         // 启动时从磁盘加载所有 .vtlog 文件的历史条目
         guard let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) else { return }
         
-        let vtlogFiles = files.filter { $0.pathExtension == "vtlog" }.sorted {
+        let vtlogFiles = files.filter { $0.pathExtension == "vtlog" && $0 != activeLogFileURL }.sorted {
             ($0.lastPathComponent) < ($1.lastPathComponent)
         }
         
-        var loaded: [Data] = []
         for fileURL in vtlogFiles {
             guard let fileData = try? Data(contentsOf: fileURL) else { continue }
             guard fileData.count >= 13 else { continue }
@@ -240,18 +198,14 @@ final class SecureLogger {
                 offset += 4
                 guard entryLen > 0, offset + Int(entryLen) <= fileData.count else { break }
                 let entryData = fileData.subdata(in: offset..<offset+Int(entryLen))
-                loaded.append(entryData)
+                encryptedEntries.append(entryData)
                 offset += Int(entryLen)
             }
         }
         
-        // 统一在主线程写入，避免与 log() 的 main.async 并发
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.encryptedEntries.insert(contentsOf: loaded, at: 0)
-            if self.encryptedEntries.count > self.maxEntries {
-                self.encryptedEntries = Array(self.encryptedEntries.suffix(self.maxEntries))
-            }
+        // 限制最大条数
+        if encryptedEntries.count > maxEntries {
+            encryptedEntries = Array(encryptedEntries.suffix(maxEntries))
         }
     }
     

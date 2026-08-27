@@ -158,13 +158,16 @@ struct AuthView: View {
         SecureLogger.shared.log("login attempt: \(loginUsername)", module: "Auth")
         Task {
             do {
+                SecureLogger.shared.log("calling api.login now", module: "Auth")
                 let resp = try await api.login(username: loginUsername, password: loginPassword)
-                SecureLogger.shared.log("login success: \(loginUsername)", module: "Auth")
+                SecureLogger.shared.log("login API returned success: \(loginUsername), token length=\(resp.token.count)", module: "Auth")
                 await MainActor.run {
+                    SecureLogger.shared.log("setting token and currentUser on MainActor", module: "Auth")
                     appState.token = resp.token
                     appState.currentUser = resp.user
                     chatVM.setCurrentUserId(resp.user.id)
                     isLoading = false
+                    SecureLogger.shared.log("login state update done, switching view", module: "Auth")
                 }
             } catch {
                 SecureLogger.shared.log("login failed: \(error.localizedDescription)", level: .error, module: "Auth")

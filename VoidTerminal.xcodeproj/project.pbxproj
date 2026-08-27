@@ -15,6 +15,7 @@
 		A1000040000000000000A01 /* SecurityHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041000000000000A01 /* SecurityHelper.swift */; };
 		A1000042000000000000A01 /* ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000043000000000000A01 /* ImageCacheManager.swift */; };
 		A1000044000000000000A01 /* SecureLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000045000000000000A01 /* SecureLogger.swift */; };
+		A1000047000000000000A01 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000046000000000000A01 /* NetworkMonitor.swift */; };
 		A100000B000000000000A01 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000A01 /* ChatViewModel.swift */; };
 		A100000D000000000000A01 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000A01 /* RootView.swift */; };
 		A100000F000000000000A01 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000A01 /* Components.swift */; };
@@ -40,6 +41,7 @@
 		A1000041000000000000A01 /* SecurityHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityHelper.swift; sourceTree = "<group>"; };
 		A1000043000000000000A01 /* ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheManager.swift; sourceTree = "<group>"; };
 		A1000045000000000000A01 /* SecureLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureLogger.swift; sourceTree = "<group>"; };
+		A1000046000000000000A01 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		A100000C000000000000A01 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		A100000E000000000000A01 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A1000010000000000000A01 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 				A1000041000000000000A01 /* SecurityHelper.swift */,
 				A1000043000000000000A01 /* ImageCacheManager.swift */,
 				A1000045000000000000A01 /* SecureLogger.swift */,
+				A1000046000000000000A01 /* NetworkMonitor.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -269,6 +272,7 @@
 				A1000040000000000000A01 /* SecurityHelper.swift in Sources */,
 				A1000042000000000000A01 /* ImageCacheManager.swift in Sources */,
 				A1000044000000000000A01 /* SecureLogger.swift in Sources */,
+				A1000047000000000000A01 /* NetworkMonitor.swift in Sources */,
 				A100000B000000000000A01 /* ChatViewModel.swift in Sources */,
 				A100000D000000000000A01 /* RootView.swift in Sources */,
 				A100000F000000000000A01 /* Components.swift in Sources */,

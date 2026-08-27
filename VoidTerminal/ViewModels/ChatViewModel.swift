@@ -35,8 +35,11 @@ final class ChatViewModel: ObservableObject {
     }
 
     init() {
+        SecureLogger.shared.log("ChatViewModel init started", module: "Chat")
         setupCallbacks()
+        SecureLogger.shared.log("ChatViewModel setupCallbacks done", module: "Chat")
         loadFromLocal()
+        SecureLogger.shared.log("ChatViewModel init completed", module: "Chat")
     }
     
     // MARK: - Local Persistence (AES-GCM 加密存储)

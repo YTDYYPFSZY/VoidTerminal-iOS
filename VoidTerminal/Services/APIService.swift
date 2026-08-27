@@ -87,41 +87,77 @@ final class APIService: NSObject {
 
     // MARK: - Avatar
     func uploadAvatar(token: String, imageData: Data) async throws -> String {
-        let b64 = imageData.base64EncodedString()
-        let resp: AvatarResponse = try await post("/api/avatar", body: ["token": token, "data": b64])
-        return resp.avatar
+        do {
+            let b64 = imageData.base64EncodedString()
+            let resp: AvatarResponse = try await post("/api/avatar", body: ["token": token, "data": b64])
+            SecureLogger.shared.log("API uploadAvatar success: size=\(imageData.count)", module: "API")
+            return resp.avatar
+        } catch {
+            SecureLogger.shared.log("API uploadAvatar failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     func uploadGroupAvatar(token: String, gid: String, imageData: Data) async throws -> String {
-        let b64 = imageData.base64EncodedString()
-        let resp: AvatarResponse = try await post("/api/group-avatar", body: ["token": token, "gid": gid, "data": b64])
-        return resp.avatar
+        do {
+            let b64 = imageData.base64EncodedString()
+            let resp: AvatarResponse = try await post("/api/group-avatar", body: ["token": token, "gid": gid, "data": b64])
+            SecureLogger.shared.log("API uploadGroupAvatar success: gid=\(gid) size=\(imageData.count)", module: "API")
+            return resp.avatar
+        } catch {
+            SecureLogger.shared.log("API uploadGroupAvatar failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     // MARK: - Message Image
     func uploadMessageImage(token: String, imageData: Data) async throws -> String {
-        let b64 = imageData.base64EncodedString()
-        let resp: ImageUploadResponse = try await post("/api/upload-msg-image", body: ["token": token, "data": b64])
-        return resp.url
+        do {
+            let b64 = imageData.base64EncodedString()
+            let resp: ImageUploadResponse = try await post("/api/upload-msg-image", body: ["token": token, "data": b64])
+            SecureLogger.shared.log("API uploadMessageImage success: size=\(imageData.count)", module: "API")
+            return resp.url
+        } catch {
+            SecureLogger.shared.log("API uploadMessageImage failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     // MARK: - Moment
     func postMoment(token: String, text: String, images: [Data]) async throws -> Moment {
-        let b64images = images.map { $0.base64EncodedString() }
-        let resp: MomentResponse = try await post("/api/moment-post", body: ["token": token, "text": text, "images": b64images])
-        return resp.moment
+        do {
+            let b64images = images.map { $0.base64EncodedString() }
+            let resp: MomentResponse = try await post("/api/moment-post", body: ["token": token, "text": text, "images": b64images])
+            SecureLogger.shared.log("API postMoment success: images=\(images.count) textLen=\(text.count)", module: "API")
+            return resp.moment
+        } catch {
+            SecureLogger.shared.log("API postMoment failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     // MARK: - Account
     func changePassword(token: String, old: String, new: String, confirm: String) async throws {
-        let _: [String: Bool] = try await post("/api/change-password", body: [
-            "token": token, "oldPassword": old, "newPassword": new, "newPassword2": confirm
-        ])
+        do {
+            let _: [String: Bool] = try await post("/api/change-password", body: [
+                "token": token, "oldPassword": old, "newPassword": new, "newPassword2": confirm
+            ])
+            SecureLogger.shared.log("API changePassword success", module: "API")
+        } catch {
+            SecureLogger.shared.log("API changePassword failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     func changeUsername(token: String, newName: String) async throws -> User {
-        let resp: MeResponse = try await post("/api/change-username", body: ["token": token, "newUsername": newName])
-        return resp.user
+        do {
+            let resp: MeResponse = try await post("/api/change-username", body: ["token": token, "newUsername": newName])
+            SecureLogger.shared.log("API changeUsername success: newName=\(newName)", module: "API")
+            return resp.user
+        } catch {
+            SecureLogger.shared.log("API changeUsername failed: \(error.localizedDescription)", level: .error, module: "API")
+            throw error
+        }
     }
 
     // MARK: - Generic POST

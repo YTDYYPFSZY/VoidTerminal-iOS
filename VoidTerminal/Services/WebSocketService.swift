@@ -235,7 +235,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                 }
                 self.receive()
             case .failure(let error):
-                SecureLogger.shared.log("receive error: \(error?.localizedDescription ?? "unknown")", level: .error, module: "WebSocket")
+                SecureLogger.shared.log("receive error: \(error.localizedDescription)", level: .error, module: "WebSocket")
                 self._isConnected = false
                 self.heartbeatTimer?.invalidate()
                 self.scheduleReconnect()

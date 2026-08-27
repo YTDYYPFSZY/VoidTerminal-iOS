@@ -82,21 +82,21 @@ final class SecureLogger {
         // 文件格式：魔数 + 版本号 + 条目数量 + 加密条目列表
         var fileData = Data()
         
-        // 魔数 "VTLOG" (4 bytes)
+        // 魔数 "VTLOG" (5 bytes)
         fileData.append("VTLOG".data(using: .ascii)!)
         
-        // 版本号 (4 bytes, big endian)
-        var version: UInt32 = 1
+        // 版本号 (4 bytes, little endian)
+        var version: UInt32 = 1.littleEndian
         fileData.append(Data(bytes: &version, count: 4))
         
-        // 条目数量 (4 bytes, big endian)
+        // 条目数量 (4 bytes, little endian)
         let count = encryptedEntries.count
-        var entryCount: UInt32 = UInt32(count)
+        var entryCount: UInt32 = UInt32(count).littleEndian
         fileData.append(Data(bytes: &entryCount, count: 4))
         
-        // 每条加密日志：长度(4 bytes) + 加密数据
+        // 每条加密日志：长度(4 bytes, little endian) + 加密数据
         for entry in encryptedEntries {
-            var length: UInt32 = UInt32(entry.count)
+            var length: UInt32 = UInt32(entry.count).littleEndian
             fileData.append(Data(bytes: &length, count: 4))
             fileData.append(entry)
         }
@@ -141,6 +141,14 @@ final class SecureLogger {
         }
     }
     
+    /// 从 Data 的指定偏移位置读取小端序 UInt32
+    private func readUInt32LE(from data: Data, at offset: Int) -> UInt32 {
+        guard offset + 4 <= data.count else { return 0 }
+        var value: UInt32 = 0
+        data.copyBytes(to: UnsafeMutableBufferPointer(start: &value, count: 1), from: offset..<offset+4)
+        return UInt32(littleEndian: value)
+    }
+
     private func loadExistingLogs() {
         // 启动时从磁盘加载所有 .vtlog 文件的历史条目
         guard let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) else { return }
@@ -159,15 +167,15 @@ final class SecureLogger {
             guard magic == "VTLOG" else { continue }
             
             // 读取版本号和条目数（小端序）
-            let version = fileData.subdata(in: 5..<9).withUnsafeBytes { $0.load(as: UInt32.self) }
-            let count = fileData.subdata(in: 9..<13).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let version = readUInt32LE(from: fileData, at: 5)
+            let count = readUInt32LE(from: fileData, at: 9)
             
             guard version == 1 else { continue }
             
             var offset = 13
             for _ in 0..<count {
                 guard offset + 4 <= fileData.count else { break }
-                let entryLen = fileData.subdata(in: offset..<offset+4).withUnsafeBytes { $0.load(as: UInt32.self) }
+                let entryLen = readUInt32LE(from: fileData, at: offset)
                 offset += 4
                 
                 guard offset + Int(entryLen) <= fileData.count else { break }

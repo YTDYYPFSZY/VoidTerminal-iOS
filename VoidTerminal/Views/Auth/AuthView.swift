@@ -155,9 +155,11 @@ struct AuthView: View {
         }
         isLoading = true
         message = ""
+        SecureLogger.shared.log("login attempt: \(loginUsername)", module: "Auth")
         Task {
             do {
                 let resp = try await api.login(username: loginUsername, password: loginPassword)
+                SecureLogger.shared.log("login success: \(loginUsername)", module: "Auth")
                 await MainActor.run {
                     appState.token = resp.token
                     appState.currentUser = resp.user
@@ -165,6 +167,7 @@ struct AuthView: View {
                     isLoading = false
                 }
             } catch {
+                SecureLogger.shared.log("login failed: \(error.localizedDescription)", level: .error, module: "Auth")
                 await MainActor.run {
                     message = error.localizedDescription
                     isLoading = false

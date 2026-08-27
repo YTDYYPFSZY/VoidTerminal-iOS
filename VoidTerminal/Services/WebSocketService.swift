@@ -58,9 +58,13 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         isManualDisconnect = false
         reconnectAttempts = 0
         if task != nil { disconnect() }
+        SecureLogger.shared.log("connecting to \(ServerConfig.shared.wsURL)", module: "WebSocket")
         startConnectionCheck()
         self.token = token
-        guard let url = URL(string: ServerConfig.shared.wsURL) else { return }
+        guard let url = URL(string: ServerConfig.shared.wsURL) else {
+            SecureLogger.shared.log("invalid wsURL", level: .error, module: "WebSocket")
+            return
+        }
         task = session.webSocketTask(with: url)
         task?.resume()
         _isConnected = true
@@ -230,7 +234,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                 @unknown default: break
                 }
                 self.receive()
-            case .failure:
+            case .failure(let error):
+                SecureLogger.shared.log("receive error: \(error?.localizedDescription ?? "unknown")", level: .error, module: "WebSocket")
                 self._isConnected = false
                 self.heartbeatTimer?.invalidate()
                 self.scheduleReconnect()
@@ -257,14 +262,17 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             }
         case "global":
             if var msg = try? decoder.decode(ChatMessage.self, from: data) {
+                SecureLogger.shared.log("recv global msg from=\(msg.from)", module: "WebSocket")
                 onGlobalMessage?(msg)
             }
         case "dm":
             if var msg = try? decoder.decode(ChatMessage.self, from: data) {
+                SecureLogger.shared.log("recv dm msg from=\(msg.from) to=\(msg.to ?? "?")", module: "WebSocket")
                 onDMMessage?(msg)
             }
         case "group":
             if var msg = try? decoder.decode(ChatMessage.self, from: data) {
+                SecureLogger.shared.log("recv group msg from=\(msg.from) gid=\(msg.gid ?? "?")", module: "WebSocket")
                 onGroupMessage?(msg)
             }
         case "recalled":
@@ -272,15 +280,24 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             let id = dict["id"] as? String ?? ""
             let to = dict["to"] as? String
             let gid = dict["gid"] as? String
+            SecureLogger.shared.log("recv recall room=\(room) id=\(id)", module: "WebSocket")
             onRecalled?(room, id, to, gid)
         case "error":
-            onError?(dict["error"] as? String ?? "未知错误")
+            let errMsg = dict["error"] as? String ?? "未知错误"
+            SecureLogger.shared.log("recv error: \(errMsg)", level: .error, module: "WebSocket")
+            onError?(errMsg)
         case "banned":
-            onBanned?(dict["error"] as? String ?? "账号已被封禁")
+            let errMsg = dict["error"] as? String ?? "账号已被封禁"
+            SecureLogger.shared.log("recv banned: \(errMsg)", level: .error, module: "WebSocket")
+            onBanned?(errMsg)
         case "kicked":
-            onKicked?(dict["error"] as? String ?? "你已被移出服务器")
+            let errMsg = dict["error"] as? String ?? "你已被移出服务器"
+            SecureLogger.shared.log("recv kicked: \(errMsg)", level: .error, module: "WebSocket")
+            onKicked?(errMsg)
         case "system":
-            onSystem?(dict["content"] as? String ?? "")
+            let content = dict["content"] as? String ?? ""
+            SecureLogger.shared.log("recv system: \(content)", module: "WebSocket")
+            onSystem?(content)
         case "presence":
             if let online = dict["online"] as? [[String: Any]] {
                 let ids = online.compactMap { $0["id"] as? String }
@@ -294,12 +311,14 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
             if let reqDict = dict["request"] as? [String: Any],
                let reqData = try? JSONSerialization.data(withJSONObject: reqDict),
                let req = try? decoder.decode(FriendRequest.self, from: reqData) {
+                SecureLogger.shared.log("recv friend-request from=\(req.fromName)", module: "WebSocket")
                 onFriendRequest?(req)
             }
         case "friend-update":
             if let friends = dict["friends"] as? [[String: Any]],
                let fData = try? JSONSerialization.data(withJSONObject: friends),
                let list = try? decoder.decode([User].self, from: fData) {
+                SecureLogger.shared.log("recv friend-update count=\(list.count)", module: "WebSocket")
                 onFriendUpdate?(list)
             }
         case "request-respond":
@@ -453,7 +472,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         guard !isManualDisconnect, let token = token else { return }
         reconnectAttempts += 1
         let delay = min(Double(reconnectAttempts) * 2, 15)
-        print("WS reconnect scheduled in \(delay)s (attempt \(reconnectAttempts))")
+        SecureLogger.shared.log("reconnect scheduled in \(Int(delay))s (attempt \(reconnectAttempts))", level: .warn, module: "WebSocket")
         reconnectTimer?.invalidate()
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             guard let self = self, !self.isManualDisconnect else { return }

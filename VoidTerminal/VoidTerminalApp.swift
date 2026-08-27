@@ -83,18 +83,22 @@ final class AppState: ObservableObject {
 
     func restoreSession() async {
         guard let token = token else { return }
+        SecureLogger.shared.log("restoring session", module: "App")
         do {
             let me = try await api.me(token: token)
+            SecureLogger.shared.log("session restored: \(me.username)", module: "App")
             await MainActor.run {
                 self.currentUser = me
             }
             // WebSocket连接统一在MainTabView.onAppear中建立，避免重复连接
         } catch {
+            SecureLogger.shared.log("session restore failed: \(error.localizedDescription)", level: .error, module: "App")
             await MainActor.run { self.token = nil }
         }
     }
 
     func logout() {
+        SecureLogger.shared.log("logout", module: "App")
         ws.disconnect()
         token = nil
         currentUser = nil

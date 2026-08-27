@@ -83,7 +83,10 @@ struct ProfileView: View {
                         // 菜单
                         VStack(spacing: 10) {
                             if appState.isAdmin || appState.currentUser?.isAdmin == true {
-                                menuButton(title: "⚙ 站长管理", isAdmin: true) { showAdmin = true }
+                                menuButton(title: "⚙ 站长管理", isAdmin: true) {
+                                    SecureLogger.shared.log("open admin view", module: "UI")
+                                    showAdmin = true
+                                }
                             }
                             // 调试：显示管理员状态（正式版可移除）
                             HStack {
@@ -100,20 +103,40 @@ struct ProfileView: View {
                             }
                             .padding(.horizontal, 16)
 
-                            menuButton(title: "日间 / 夜间模式") {
-                                appState.theme = appState.theme == .dark ? .light : .dark
+                            menuButton(title: "日间 / 夜间模式", showArrow: false) {
+                                let newTheme: AppState.Theme = appState.theme == .dark ? .light : .dark
+                                appState.theme = newTheme
+                                SecureLogger.shared.log("theme switched to \(newTheme == .dark ? "dark" : "light")", module: "Settings")
                             }
 
-                            menuButton(title: "字体大小") { showFontSize = true }
+                            menuButton(title: "字体大小") {
+                                SecureLogger.shared.log("open font size view", module: "UI")
+                                showFontSize = true
+                            }
 
-                            menuButton(title: "更改用户名") { showChangeUsername = true }
+                            menuButton(title: "更改用户名") {
+                                SecureLogger.shared.log("open change username view", module: "UI")
+                                showChangeUsername = true
+                            }
 
-                            menuButton(title: "更改密码") { showChangePassword = true }
+                            menuButton(title: "更改密码") {
+                                SecureLogger.shared.log("open change password view", module: "UI")
+                                showChangePassword = true
+                            }
 
-                            menuButton(title: "服务器设置") { showServerConfig = true }
-                            menuButton(title: "📊 运行日志") { showDebugLog = true }
+                            menuButton(title: "服务器设置") {
+                                SecureLogger.shared.log("open server config view", module: "UI")
+                                showServerConfig = true
+                            }
+                            menuButton(title: "📊 运行日志") {
+                                SecureLogger.shared.log("open debug log view", module: "UI")
+                                showDebugLog = true
+                            }
 
-                            menuButton(title: "📋 更新日志") { showChangelog = true }
+                            menuButton(title: "📋 更新日志") {
+                                SecureLogger.shared.log("open changelog view", module: "UI")
+                                showChangelog = true
+                            }
 
                             Button {
                                 appState.logout()
@@ -148,6 +171,7 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .onChange(of: avatarItem) { newValue in
                 guard let newValue = newValue else { return }
+                SecureLogger.shared.log("change avatar", module: "Settings")
                 Task {
                     if let data = try? await newValue.loadTransferable(type: Data.self),
                        let token = appState.token {
@@ -176,16 +200,18 @@ struct ProfileView: View {
         }
     }
 
-    private func menuButton(title: String, isAdmin: Bool = false, action: @escaping () -> Void) -> some View {
+    private func menuButton(title: String, isAdmin: Bool = false, showArrow: Bool = true, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)
                     .font(.vt(size: 15))
                     .foregroundColor(.vtText)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundColor(Color.vtTextDim)
-                    .font(.vt(size: 12))
+                if showArrow {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(Color.vtTextDim)
+                        .font(.vt(size: 12))
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -228,6 +254,7 @@ struct ChangeUsernameView: View {
                             do {
                                 let user = try await api.changeUsername(token: token, newName: newUsername)
                                 await MainActor.run {
+                                    SecureLogger.shared.log("username changed to \(newUsername)", module: "Settings")
                                     appState.currentUser = user
                                     dismiss()
                                 }
@@ -277,7 +304,10 @@ struct ChangePasswordView: View {
                     Task {
                         do {
                             try await api.changePassword(token: token, old: oldPassword, new: newPassword, confirm: confirmPassword)
-                            await MainActor.run { dismiss() }
+                            await MainActor.run {
+                                SecureLogger.shared.log("password changed", module: "Settings")
+                                dismiss()
+                            }
                         } catch {
                             await MainActor.run {
                                 message = error.localizedDescription
@@ -307,6 +337,7 @@ struct FontSizeView: View {
                     ForEach([("小", "sm"), ("标准", "md"), ("大", "lg"), ("特大", "xl")], id: \.1) { name, raw in
                         Button {
                             appState.fontSize = AppState.FontSize(rawValue: raw) ?? .md
+                            SecureLogger.shared.log("font size changed to \(raw)", module: "Settings")
                             dismiss()
                         } label: {
                             HStack {
@@ -344,6 +375,7 @@ struct AdminView: View {
                         .keyboardType(.numberPad)
                     Button("设置") {
                         if let n = Int(maxOnline) {
+                            SecureLogger.shared.log("admin set max online=\(n)", module: "Admin")
                             WebSocketService.shared.setMaxOnline(n)
                             chatVM.showToast("已设置")
                         }
@@ -353,11 +385,13 @@ struct AdminView: View {
                     TextField("新大厅名称", text: $hallName)
                     Button("改名") {
                         if !hallName.isEmpty {
+                            SecureLogger.shared.log("admin rename hall to \(hallName)", module: "Admin")
                             WebSocketService.shared.renameHall(name: hallName)
                             chatVM.showToast("已改名")
                         }
                     }.foregroundColor(Color(hex: "07c160"))
                     Button("清空大厅记录") {
+                        SecureLogger.shared.log("admin clear hall records", module: "Admin")
                         WebSocketService.shared.clearHall()
                         chatVM.showToast("已清空")
                     }.foregroundColor(.red)
@@ -366,6 +400,7 @@ struct AdminView: View {
                     TextField("封禁用户名", text: $banUsername)
                     Button("封禁") {
                         if !banUsername.isEmpty {
+                            SecureLogger.shared.log("admin ban user=\(banUsername)", module: "Admin")
                             WebSocketService.shared.banUser(username: banUsername)
                             banUsername = ""
                         }
@@ -373,6 +408,7 @@ struct AdminView: View {
                     TextField("解封用户名", text: $unbanUsername)
                     Button("解封") {
                         if !unbanUsername.isEmpty {
+                            SecureLogger.shared.log("admin unban user=\(unbanUsername)", module: "Admin")
                             WebSocketService.shared.unbanUser(username: unbanUsername)
                             unbanUsername = ""
                         }
@@ -382,6 +418,7 @@ struct AdminView: View {
                     TextField("公告内容", text: $announceText)
                     Button("发布公告") {
                         if !announceText.isEmpty {
+                            SecureLogger.shared.log("admin announce length=\(announceText.count)", module: "Admin")
                             WebSocketService.shared.announce(content: announceText)
                             announceText = ""
                             chatVM.showToast("已发布")
@@ -514,10 +551,20 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v3.2.1",
+            version: "v3.2.2",
             date: "2026-08-27",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "修复朋友圈点赞评论不显示问题",
+                "修复已知问题"
+            ]
+        ),
+        VersionLog(
+            version: "v3.2.1",
+            date: "2026-08-27",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "修复已知问题"
             ]

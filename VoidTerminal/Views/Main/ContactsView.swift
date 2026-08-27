@@ -44,6 +44,7 @@ struct ContactsView: View {
                             name: "添加好友",
                             subtitle: nil
                         ) {
+                            SecureLogger.shared.log("open add friend sheet", module: "UI")
                             showAddFriend = true
                         }
 
@@ -54,6 +55,7 @@ struct ContactsView: View {
                             name: "创建群聊",
                             subtitle: nil
                         ) {
+                            SecureLogger.shared.log("open create group sheet", module: "UI")
                             showCreateGroup = true
                         }
 
@@ -64,6 +66,7 @@ struct ContactsView: View {
                             name: "搜索群聊",
                             subtitle: nil
                         ) {
+                            SecureLogger.shared.log("open search group sheet", module: "UI")
                             showSearchGroup = true
                         }
 
@@ -76,6 +79,7 @@ struct ContactsView: View {
                                     name: group.name,
                                     subtitle: "\(group.members.count) 人"
                                 ) {
+                                    SecureLogger.shared.log("enter group chat: \(group.name)", module: "UI")
                                     activeRoom = .group(gid: group.id, name: group.name)
                                     chatVM.currentRoom = .group(gid: group.id, name: group.name)
                                 }
@@ -92,6 +96,7 @@ struct ContactsView: View {
                                     subtitle: chatVM.isOnline(friend.id) ? "在线" : "离线",
                                     showOnline: chatVM.isOnline(friend.id)
                                 ) {
+                                    SecureLogger.shared.log("enter dm chat: \(friend.username)", module: "UI")
                                     activeRoom = .dm(peerId: friend.id, peerName: friend.username)
                                     chatVM.currentRoom = .dm(peerId: friend.id, peerName: friend.username)
                                 }
@@ -211,6 +216,7 @@ struct AddFriendView: View {
                 Section {
                     Button("发送验证") {
                         guard !username.isEmpty else { message = "请输入用户名"; return }
+                        SecureLogger.shared.log("send friend request to \(username)", module: "Contacts")
                         WebSocketService.shared.sendFriendRequest(username: username)
                         dismiss()
                     }
@@ -268,6 +274,7 @@ struct CreateGroupView: View {
                     Button("创建") {
                         guard !groupName.isEmpty else { message = "请输入群名称"; return }
                         guard !selectedMembers.isEmpty else { message = "请至少选择一位好友"; return }
+                        SecureLogger.shared.log("create group name=\(groupName) membersCount=\(selectedMembers.count)", module: "Contacts")
                         WebSocketService.shared.createGroup(name: groupName, members: Array(selectedMembers))
                         dismiss()
                     }
@@ -317,6 +324,7 @@ struct SearchGroupView: View {
                 
                 // 搜索按钮
                 Button {
+                    SecureLogger.shared.log("search groups keyword=\(keyword)", module: "Contacts")
                     chatVM.searchGroups(keyword: keyword)
                 } label: {
                     Text("搜索")
@@ -409,7 +417,10 @@ struct SearchGroupRow: View {
             Spacer()
             
             // 申请按钮
-            Button(action: onApply) {
+            Button(action: {
+                SecureLogger.shared.log("apply to join group: \(group.name)", module: "Contacts")
+                onApply()
+            }) {
                 Text("申请加入")
                     .font(.vt(size: 13, weight: .semibold))
                     .foregroundColor(.white)

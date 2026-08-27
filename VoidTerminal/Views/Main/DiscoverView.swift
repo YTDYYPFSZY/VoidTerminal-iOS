@@ -23,10 +23,12 @@ struct DiscoverView: View {
                     ScrollView {
                         VStack(spacing: 8) {
                             discoverItem(icon: "朋", label: "朋友圈") {
+                                SecureLogger.shared.log("tap moments entry", module: "UI")
                                 withAnimation { showMoments = true }
                             }
 
                             discoverItem(icon: "书", label: "看番茄小说") {
+                                SecureLogger.shared.log("tap tomato novel entry", module: "UI")
                                 showTomatoWarning = true
                             }
                         }

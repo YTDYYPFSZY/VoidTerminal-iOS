@@ -48,9 +48,13 @@ struct MainTabView: View {
         }
         .background(Color.vtBG.ignoresSafeArea())
         .onAppear {
+            SecureLogger.shared.log("MainTabView onAppear", module: "App")
             // 确保进入主界面后建立WebSocket连接（此时ChatViewModel回调已就绪）
             if let token = appState.token {
+                SecureLogger.shared.log("MainTabView: token found, connecting WebSocket", module: "App")
                 WebSocketService.shared.connect(token: token)
+            } else {
+                SecureLogger.shared.log("MainTabView: no token, skip WebSocket", module: "App")
             }
         }
     }

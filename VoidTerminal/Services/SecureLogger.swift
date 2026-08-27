@@ -193,8 +193,8 @@ final class SecureLogger {
         let countData = handle.readData(ofLength: 4)
         var currentCount: UInt32 = 0
         if countData.count == 4 {
-            countData.withUnsafeBytes { ptr in
-                currentCount = ptr.load(as: UInt32.self).littleEndian
+            currentCount = countData.withUnsafeBytes { ptr in
+                ptr.baseAddress!.assumingMemoryBound(to: UInt32.self).pointee.littleEndian
             }
         }
         currentCount += 1

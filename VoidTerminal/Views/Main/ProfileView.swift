@@ -434,9 +434,20 @@ struct LogExportView: View {
                     // 导出按钮
                     Button {
                         if let url = SecureLogger.shared.exportLog() {
-                            exportedFileURL = url
-                            showShareSheet = true
-                            exportSuccess = true
+                            // 复制到临时目录，确保分享面板能被其他 App 读取
+                            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+                            try? FileManager.default.removeItem(at: tempURL)
+                            do {
+                                try FileManager.default.copyItem(at: url, to: tempURL)
+                                exportedFileURL = tempURL
+                                showShareSheet = true
+                                exportSuccess = true
+                            } catch {
+                                // 临时目录复制失败，直接用原路径
+                                exportedFileURL = url
+                                showShareSheet = true
+                                exportSuccess = true
+                            }
                         }
                     } label: {
                         Text("导出日志文件")
@@ -503,10 +514,19 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v3.1",
+            version: "v3.2.1",
             date: "2026-08-27",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "修复已知问题"
+            ]
+        ),
+        VersionLog(
+            version: "v3.1",
+            date: "2026-08-27",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "大厅输入@不再弹出列表，改为长按头像@",
                 "修复已知问题"

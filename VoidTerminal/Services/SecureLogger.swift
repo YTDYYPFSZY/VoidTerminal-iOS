@@ -44,9 +44,13 @@ final class SecureLogger {
             .prefix(19)
         activeLogFileURL = docs.appendingPathComponent("vt_logs/\(date).vtlog")
         
-        ensureLogDirectory()
-        loadExistingLogs()
-        writeHeaderIfNeeded()
+        // 所有文件操作放到 ioQueue 异步执行，防止阻塞或崩溃影响 App 启动
+        ioQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.ensureLogDirectory()
+            self.loadExistingLogs()
+            self.writeHeaderIfNeeded()
+        }
     }
     
     // MARK: - 公开方法
@@ -218,6 +222,7 @@ final class SecureLogger {
             ($0.lastPathComponent) < ($1.lastPathComponent)
         }
         
+        var loaded: [Data] = []
         for fileURL in vtlogFiles {
             guard let fileData = try? Data(contentsOf: fileURL) else { continue }
             guard fileData.count >= 13 else { continue }
@@ -235,14 +240,18 @@ final class SecureLogger {
                 offset += 4
                 guard entryLen > 0, offset + Int(entryLen) <= fileData.count else { break }
                 let entryData = fileData.subdata(in: offset..<offset+Int(entryLen))
-                encryptedEntries.append(entryData)
+                loaded.append(entryData)
                 offset += Int(entryLen)
             }
         }
         
-        // 限制最大条数
-        if encryptedEntries.count > maxEntries {
-            encryptedEntries = Array(encryptedEntries.suffix(maxEntries))
+        // 统一在主线程写入，避免与 log() 的 main.async 并发
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.encryptedEntries.insert(contentsOf: loaded, at: 0)
+            if self.encryptedEntries.count > self.maxEntries {
+                self.encryptedEntries = Array(self.encryptedEntries.suffix(self.maxEntries))
+            }
         }
     }
     

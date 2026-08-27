@@ -55,6 +55,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: - Connection
     func connect(token: String) {
+        SecureLogger.shared.log("WebSocket connect called, token length=\(token.count)", module: "WebSocket")
         isManualDisconnect = false
         reconnectAttempts = 0
         if task != nil { disconnect() }
@@ -68,10 +69,12 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         task = session.webSocketTask(with: url)
         task?.resume()
         _isConnected = true
+        SecureLogger.shared.log("WebSocket task resumed, starting receive", module: "WebSocket")
         receive()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.sendAuth()
-                self?.startHeartbeat()
+            self?.startHeartbeat()
+            SecureLogger.shared.log("WebSocket auth sent and heartbeat started", module: "WebSocket")
         }
     }
 

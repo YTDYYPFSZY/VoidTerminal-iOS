@@ -411,15 +411,15 @@ struct LogExportView: View {
                     Spacer()
                     
                     // 图标
-                    Image(systemName: "lock.shield.fill")
+                    Image(systemName: "doc.text.fill")
                         .font(.system(size: 56))
                         .foregroundColor(.vtTextDim)
                     
-                    Text("运行日志已加密")
+                    Text("运行日志")
                         .font(.vt(size: 16))
                         .foregroundColor(.vtText)
                     
-                    Text("当前记录 \(logCount) 条加密日志")
+                    Text("当前记录 \(logCount) 条日志")
                         .font(.vt(size: 13))
                         .foregroundColor(.vtTextDim)
                     
@@ -503,10 +503,29 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v3.0.1",
-            date: "2026-08-26",
+            version: "v3.1",
+            date: "2026-08-27",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "大厅输入@不再弹出列表，改为长按头像@",
+                "修复已知问题"
+            ]
+        ),
+        VersionLog(
+            version: "v3.0.2",
+            date: "2026-08-27",
+            badge: "",
+            badgeColor: "6b7280",
+            items: [
+                "修复已知问题"
+            ]
+        ),
+        VersionLog(
+            version: "v3.0.1",
+            date: "2026-08-26",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "修复已知问题"
             ]

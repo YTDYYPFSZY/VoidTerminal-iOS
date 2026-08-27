@@ -75,6 +75,17 @@ struct MomentsView: View {
             TextField("写评论…", text: $commentText)
             Button("发送") {
                 if let moment = commentMoment, !commentText.isEmpty {
+                    // 乐观更新：立即 append 一条新评论
+                    let tempComment = MomentComment(
+                        user: chatVM.currentUserId,
+                        userName: appState.currentUser?.username,
+                        text: commentText,
+                        time: Int(Date().timeIntervalSince1970 * 1000)
+                    )
+                    if let idx = chatVM.moments.firstIndex(where: { $0.id == moment.id }) {
+                        chatVM.moments[idx].comments.append(tempComment)
+                    }
+                    SecureLogger.shared.log("comment momentId=\(moment.id) textLen=\(commentText.count)", module: "Moments")
                     WebSocketService.shared.momentComment(momentId: moment.id, text: commentText)
                     commentText = ""
                     commentMoment = nil
@@ -124,6 +135,16 @@ struct MomentsView: View {
             // 点赞和评论
             HStack(spacing: 8) {
                 Button {
+                    // 乐观更新：立即 toggle likes
+                    if let idx = chatVM.moments.firstIndex(where: { $0.id == moment.id }) {
+                        if chatVM.moments[idx].likes.contains(chatVM.currentUserId) {
+                            chatVM.moments[idx].likes.removeAll { $0 == chatVM.currentUserId }
+                            SecureLogger.shared.log("unlike momentId=\(moment.id)", module: "Moments")
+                        } else {
+                            chatVM.moments[idx].likes.append(chatVM.currentUserId)
+                            SecureLogger.shared.log("like momentId=\(moment.id)", module: "Moments")
+                        }
+                    }
                     WebSocketService.shared.momentLike(momentId: moment.id)
                 } label: {
                     HStack(spacing: 4) {
@@ -151,6 +172,9 @@ struct MomentsView: View {
 
                 if isMyMoment {
                     Button(role: .destructive) {
+                        // 乐观更新：立即从列表移除
+                        chatVM.moments.removeAll { $0.id == moment.id }
+                        SecureLogger.shared.log("delete momentId=\(moment.id)", module: "Moments")
                         WebSocketService.shared.momentDelete(momentId: moment.id)
                     } label: {
                         Image(systemName: "trash")
@@ -173,6 +197,11 @@ struct MomentsView: View {
                             Spacer()
                             if comment.user == chatVM.currentUserId || isMyMoment {
                                 Button {
+                                    // 乐观更新：立即从评论列表移除
+                                    if let idx = chatVM.moments.firstIndex(where: { $0.id == moment.id }) {
+                                        chatVM.moments[idx].comments.removeAll { $0.id == comment.id }
+                                    }
+                                    SecureLogger.shared.log("delete comment momentId=\(moment.id) commentId=\(comment.id)", module: "Moments")
                                     WebSocketService.shared.momentCommentDelete(momentId: moment.id, commentId: comment.id)
                                 } label: {
                                     Image(systemName: "xmark")

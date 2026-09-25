@@ -129,7 +129,17 @@ final class SecureLogger {
 
             do {
                 try fileData.write(to: fileURL, options: .completeFileProtectionUntilFirstUserAuthentication)
-                for oldFile in allShardFiles() where oldFile != fileURL {
+
+                // 先校验导出文件是否写全，确认无误再删旧分片（避免"导出失败还把原始日志删了"）
+                let verified = entryBlobs(in: fileURL).count
+                guard verified == entries.count else {
+                    failureMessage = "export verify failed: \(verified)/\(entries.count)"
+                    return
+                }
+
+                // 用路径字符串比较（URL 相等性判断在某些情况下不可靠，会误删刚导出的文件）
+                let keepPath = fileURL.path
+                for oldFile in allShardFiles() where oldFile.path != keepPath {
                     try? fileManager.removeItem(at: oldFile)
                 }
                 archivedShardCounts.removeAll()
@@ -392,8 +402,9 @@ final class SecureLogger {
             let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
             let size = values?.fileSize ?? 0
             totalBytes += size
-            if fileURL == activeURL { continue }
-            let date = values?.contentModificationDate ?? Date.distantPast
+            if fileURL.path == activeURL.path { continue }
+            // 读不到修改时间时保守处理为"刚刚创建"，绝不因为读不到时间就删日志
+            let date = values?.contentModificationDate ?? Date()
             shards.append((fileURL, date, size, archivedShardCounts[fileURL.path] ?? 0))
         }
         shards.sort { $0.date < $1.date }

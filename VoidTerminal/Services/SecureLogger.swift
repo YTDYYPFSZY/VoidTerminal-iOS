@@ -20,138 +20,154 @@ final class SecureLogger {
     }
     
     // MARK: - 属性
-    private var encryptedEntries: [Data] = []  // 内存中保存加密后的日志条目
-    private let maxEntries = 500
     private let fileManager = FileManager.default
-    
+
     // 日志文件存储路径
     private var logDirectoryURL: URL {
         let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return docs.appendingPathComponent("vt_logs")
     }
-    
-    /// 当前活动日志文件（每次启动/导出时一个新文件）
-    private var activeLogFileURL: URL
-    
+
+    // MARK: - 分片存储（写入只追加，不再重写整个文件）
+    /// 串行队列：日志的编码/加密/追加写盘都在这里完成，避免阻塞主线程
+    private let queue = DispatchQueue(label: "com.voidterminal.securelogger", qos: .utility)
+    private static let queueKey = DispatchSpecificKey<UInt8>()
+
+    /// 单个分片最多容纳的条目数
+    private let shardCapacity = 500
+    /// 日志最大保留条数（超出后从最旧的分片删起）
+    private let maxEntries = 20000
+    /// 日志最大保留时长（7 天）
+    private let maxRetention: TimeInterval = 7 * 24 * 60 * 60
+    /// 日志目录最大占用（8MB 硬顶）
+    private let maxDiskBytes = 8 * 1024 * 1024
+
+    /// 当前活动分片文件
+    private var activeShardURL: URL?
+    /// 当前活动分片的写入句柄
+    private var activeFileHandle: FileHandle?
+    /// 当前活动分片已写入的条目数
+    private var activeShardEntryCount = 0
+    /// 已封存分片的条目数（key = 文件路径）
+    private var archivedShardCounts: [String: Int] = [:]
+
+    /// 写盘失败次数（用于排查日志系统本身是否在丢数据）
+    private(set) var writeFailureCount = 0
+    /// 加密失败次数
+    private(set) var encryptFailureCount = 0
+
     private init() {
-        // 直接构造路径，不访问 self 的其他属性
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let date = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-            .prefix(19)
-        activeLogFileURL = docs.appendingPathComponent("vt_logs/\(date).vtlog")
-        
+        queue.setSpecific(key: SecureLogger.queueKey, value: 1)
         ensureLogDirectory()
-        loadExistingLogs()
-        writeHeaderIfNeeded()
+        loadExistingShardCounts()
+        openNewShard()
+        pruneShards()
     }
     
     // MARK: - 公开方法
     
-    /// 记录日志（加密并存入内存，导出时统一写盘）
+    /// 记录日志（编码/加密/追加写盘都在后台串行队列完成，不阻塞调用方）
     func log(_ message: String, level: LogLevel = .info, module: String = "General", userId: String? = nil) {
         var msg = message
         if let uid = userId {
             msg = "[user:\(uid)] \(message)"
         }
-        
         let entry = LogEntry(
             timestamp: Date().timeIntervalSince1970,
             level: level.rawValue,
             module: module,
             message: msg
         )
-        
-        guard let jsonData = try? JSONEncoder().encode(entry) else { return }
-        guard let encrypted = encryptWithPublicKey(jsonData) else { return }
-        
-        encryptedEntries.append(encrypted)
-        if encryptedEntries.count > maxEntries {
-            encryptedEntries.removeFirst(encryptedEntries.count - maxEntries)
+        queue.async { [weak self] in
+            self?.appendEntry(entry)
         }
-        
-        // 实时写盘，确保崩溃后日志不丢失
-        flushToDisk()
     }
-    
-    /// 将所有内存中的加密条目写入活动日志文件
-    private func flushToDisk() {
-        do {
+
+    /// 等待队列中待写入的日志全部落盘（退出/导出前调用）
+    func flushSync() {
+        syncOnQueue { }
+    }
+
+    /// 导出加密日志：把所有分片合并成一个文件，并清理旧分片
+    func exportLog() -> URL? {
+        var exported: URL?
+        var exportedCount = 0
+        var failureMessage: String?
+
+        syncOnQueue {
+            // 先收尾当前分片，确保数据都已落盘
+            closeActiveShard()
+
+            let entries = collectAllEntryBlobs()
+            guard !entries.isEmpty else { return }
+
+            ensureLogDirectory()
+            let fileURL = nextShardURL()
+
             var fileData = Data()
             fileData.append("VTLOG".data(using: .ascii)!)
             var version: UInt32 = UInt32(1).littleEndian
             fileData.append(Data(bytes: &version, count: 4))
-            var entryCount: UInt32 = UInt32(encryptedEntries.count).littleEndian
+            var entryCount: UInt32 = UInt32(entries.count).littleEndian
             fileData.append(Data(bytes: &entryCount, count: 4))
-            for entry in encryptedEntries {
+            for entry in entries {
                 var length: UInt32 = UInt32(entry.count).littleEndian
                 fileData.append(Data(bytes: &length, count: 4))
                 fileData.append(entry)
             }
-            try fileData.write(to: activeLogFileURL, options: .completeFileProtection)
-        } catch {
-            // 写盘失败时静默处理，避免日志系统本身导致崩溃
-        }
-    }
-    
-    /// 导出加密日志文件
-    /// - Returns: 导出的文件路径
-    func exportLog() -> URL? {
-        guard !encryptedEntries.isEmpty else { return nil }
-        
-        ensureLogDirectory()
-        
-        let date = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-            .prefix(19)
-        let fileURL = logDirectoryURL.appendingPathComponent("\(date).vtlog")
-        activeLogFileURL = fileURL
-        
-        var fileData = Data()
-        fileData.append("VTLOG".data(using: .ascii)!)
-        var version: UInt32 = UInt32(1).littleEndian
-        fileData.append(Data(bytes: &version, count: 4))
-        let count = encryptedEntries.count
-        var entryCount: UInt32 = UInt32(count).littleEndian
-        fileData.append(Data(bytes: &entryCount, count: 4))
-        for entry in encryptedEntries {
-            var length: UInt32 = UInt32(entry.count).littleEndian
-            fileData.append(Data(bytes: &length, count: 4))
-            fileData.append(entry)
-        }
-        
-        do {
-            try fileData.write(to: fileURL, options: .completeFileProtection)
-            // 清理旧的 .vtlog 文件（保留当前导出文件）
-            if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
-                for oldFile in files where oldFile.pathExtension == "vtlog" && oldFile != fileURL {
+
+            do {
+                try fileData.write(to: fileURL, options: .completeFileProtectionUntilFirstUserAuthentication)
+                for oldFile in allShardFiles() where oldFile != fileURL {
                     try? fileManager.removeItem(at: oldFile)
                 }
+                archivedShardCounts.removeAll()
+                activeShardURL = fileURL
+                activeShardEntryCount = entries.count
+                activeFileHandle = try? FileHandle(forWritingTo: fileURL)
+                exported = fileURL
+                exportedCount = entries.count
+            } catch {
+                failureMessage = error.localizedDescription
             }
-            SecureLogger.shared.log("exported \(count) entries to \(fileURL.lastPathComponent)", module: "Logger")
-            return fileURL
-        } catch {
-            SecureLogger.shared.log("export failed: \(error.localizedDescription)", level: .error, module: "Logger")
-            return nil
         }
+
+        if let url = exported {
+            log("exported \(exportedCount) entries to \(url.lastPathComponent)", module: "Logger")
+        } else if let message = failureMessage {
+            log("export failed: \(message)", level: .error, module: "Logger")
+        }
+        return exported
     }
-    
-    /// 清除所有日志
+
+    /// 清空全部日志
     func clearLogs() {
-        encryptedEntries.removeAll()
-        if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
-            for file in files {
-                try? fileManager.removeItem(at: file)
+        syncOnQueue {
+            try? activeFileHandle?.close()
+            activeFileHandle = nil
+            activeShardURL = nil
+            activeShardEntryCount = 0
+            archivedShardCounts.removeAll()
+            if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
+                for file in files {
+                    try? fileManager.removeItem(at: file)
+                }
             }
+            openNewShard()
+            writeFailureCount = 0
+            encryptFailureCount = 0
         }
-        writeHeaderIfNeeded()
     }
-    
-    /// 获取当前日志条数（用于界面显示）
+
+    /// 获取当前日志总条数（用于界面显示）
     var logCount: Int {
-        return encryptedEntries.count
+        var count = 0
+        syncOnQueue {
+            count = archivedShardCounts.values.reduce(0, +) + activeShardEntryCount
+        }
+        return count
     }
-    
+
     // MARK: - 私有方法
     
     private func ensureLogDirectory() {
@@ -160,55 +176,190 @@ final class SecureLogger {
         }
     }
     
-    /// 如果活动日志文件不存在，写入文件头（VTLOG + version + count占位）
-    private func writeHeaderIfNeeded() {
-        let fileURL = activeLogFileURL
-        guard !fileManager.fileExists(atPath: fileURL.path) else { return }
+    /// 在日志队列上同步执行；若已在队列上则直接执行，避免死锁
+    private func syncOnQueue(_ work: () -> Void) {
+        if DispatchQueue.getSpecific(key: SecureLogger.queueKey) != nil {
+            work()
+        } else {
+            queue.sync(execute: work)
+        }
+    }
+
+    /// 加密一条日志并追加到活动分片（只追加，不重写已有内容）
+    private func appendEntry(_ entry: LogEntry) {
+        guard let jsonData = try? JSONEncoder().encode(entry) else {
+            encryptFailureCount += 1
+            return
+        }
+        guard let encrypted = encryptWithPublicKey(jsonData) else {
+            encryptFailureCount += 1
+            return
+        }
+        rotateShardIfNeeded()
+        guard let handle = activeFileHandle else {
+            writeFailureCount += 1
+            return
+        }
+        do {
+            _ = try handle.seekToEnd()
+            var length = UInt32(encrypted.count).littleEndian
+            try handle.write(contentsOf: Data(bytes: &length, count: 4))
+            try handle.write(contentsOf: encrypted)
+            activeShardEntryCount += 1
+            try updateActiveHeaderCount()
+        } catch {
+            writeFailureCount += 1
+        }
+    }
+
+    /// 分片写满则封存并换新分片
+    private func rotateShardIfNeeded() {
+        if activeFileHandle == nil {
+            openNewShard()
+        } else if activeShardEntryCount >= shardCapacity {
+            closeActiveShard()
+            openNewShard()
+            pruneShards()
+        }
+    }
+
+    /// 生成一个不重复的新分片路径
+    private func nextShardURL() -> URL {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+            .prefix(19)
+        var url = logDirectoryURL.appendingPathComponent("\(stamp).vtlog")
+        var suffix = 1
+        while fileManager.fileExists(atPath: url.path) {
+            url = logDirectoryURL.appendingPathComponent("\(stamp)-\(suffix).vtlog")
+            suffix += 1
+        }
+        return url
+    }
+
+    /// 创建一个新分片（写入文件头并打开写入句柄）
+    private func openNewShard() {
+        ensureLogDirectory()
+        let url = nextShardURL()
         var data = Data()
         data.append("VTLOG".data(using: .ascii)!)
         var version: UInt32 = UInt32(1).littleEndian
         data.append(Data(bytes: &version, count: 4))
         var count: UInt32 = 0
         data.append(Data(bytes: &count, count: 4))
-        try? data.write(to: fileURL, options: .completeFileProtection)
-    }
-    
-    private func loadExistingLogs() {
-        // 启动时从磁盘加载所有 .vtlog 文件的历史条目
-        guard let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) else { return }
-        
-        let vtlogFiles = files.filter { $0.pathExtension == "vtlog" && $0 != activeLogFileURL }.sorted {
-            ($0.lastPathComponent) < ($1.lastPathComponent)
+        do {
+            // completeUntilFirstUserAuthentication：首次解锁后即使锁屏/后台也能写入，静态仍然加密
+            try data.write(to: url, options: .completeFileProtectionUntilFirstUserAuthentication)
+            activeFileHandle = try FileHandle(forWritingTo: url)
+            activeShardURL = url
+            activeShardEntryCount = 0
+        } catch {
+            writeFailureCount += 1
+            activeFileHandle = nil
+            activeShardURL = nil
+            activeShardEntryCount = 0
         }
-        
-        for fileURL in vtlogFiles {
-            guard let fileData = try? Data(contentsOf: fileURL) else { continue }
-            guard fileData.count >= 13 else { continue }
-            
-            let magic = String(data: fileData.subdata(in: 0..<5), encoding: .ascii)
-            guard magic == "VTLOG" else { continue }
-            
-            let version = readUInt32LE(from: fileData, at: 5)
-            guard version == 1 else { continue }
-            
-            // 不依赖文件头的 count，按实际数据解析所有条目
-            var offset = 13
-            while offset + 4 <= fileData.count {
-                let entryLen = readUInt32LE(from: fileData, at: offset)
-                offset += 4
-                guard entryLen > 0, offset + Int(entryLen) <= fileData.count else { break }
-                let entryData = fileData.subdata(in: offset..<offset+Int(entryLen))
-                encryptedEntries.append(entryData)
-                offset += Int(entryLen)
+    }
+
+    /// 收尾当前分片：回写条目数、关闭句柄，并记录进已封存列表
+    private func closeActiveShard() {
+        guard let url = activeShardURL else { return }
+        try? updateActiveHeaderCount()
+        try? activeFileHandle?.close()
+        activeFileHandle = nil
+        if activeShardEntryCount > 0 {
+            archivedShardCounts[url.path] = activeShardEntryCount
+        }
+        activeShardURL = nil
+        activeShardEntryCount = 0
+    }
+
+    /// 回写文件头中的条目数（第 9 字节起 4 字节小端序）
+    private func updateActiveHeaderCount() throws {
+        guard let handle = activeFileHandle else { return }
+        _ = try handle.seek(toOffset: 9)
+        var count = UInt32(activeShardEntryCount).littleEndian
+        try handle.write(contentsOf: Data(bytes: &count, count: 4))
+    }
+
+    /// 目录里所有 .vtlog 分片，按文件名排序（ISO 文件名即时间顺序）
+    private func allShardFiles() -> [URL] {
+        let files = (try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil)) ?? []
+        return files.filter { $0.pathExtension == "vtlog" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    /// 解析单个分片里的所有加密条目
+    private func entryBlobs(in fileURL: URL) -> [Data] {
+        guard let fileData = try? Data(contentsOf: fileURL), fileData.count >= 13 else { return [] }
+        guard String(data: fileData.subdata(in: 0..<5), encoding: .ascii) == "VTLOG" else { return [] }
+        guard readUInt32LE(from: fileData, at: 5) == 1 else { return [] }
+        var blobs: [Data] = []
+        var offset = 13
+        while offset + 4 <= fileData.count {
+            let entryLen = Int(readUInt32LE(from: fileData, at: offset))
+            offset += 4
+            guard entryLen > 0, offset + entryLen <= fileData.count else { break }
+            blobs.append(fileData.subdata(in: offset..<offset + entryLen))
+            offset += entryLen
+        }
+        return blobs
+    }
+
+    /// 汇总所有分片里的加密条目（按时间顺序）
+    private func collectAllEntryBlobs() -> [Data] {
+        var blobs: [Data] = []
+        for fileURL in allShardFiles() {
+            blobs.append(contentsOf: entryBlobs(in: fileURL))
+        }
+        return blobs
+    }
+
+    /// 启动时统计已有分片的条目数（活动分片此时还没创建）
+    private func loadExistingShardCounts() {
+        var counts: [String: Int] = [:]
+        for fileURL in allShardFiles() {
+            counts[fileURL.path] = entryBlobs(in: fileURL).count
+        }
+        archivedShardCounts = counts
+    }
+
+    /// 按「最近 7 天 + 最多 20000 条 + 目录 8MB 硬顶」清理最旧的分片
+    private func pruneShards() {
+        guard let activeURL = activeShardURL else { return }
+        var totalEntries = activeShardEntryCount
+        for value in archivedShardCounts.values {
+            totalEntries += value
+        }
+
+        var totalBytes = 0
+        var shards: [(url: URL, date: Date, size: Int, count: Int)] = []
+        for fileURL in allShardFiles() {
+            let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            let size = values?.fileSize ?? 0
+            totalBytes += size
+            if fileURL == activeURL { continue }
+            let date = values?.contentModificationDate ?? Date.distantPast
+            shards.append((fileURL, date, size, archivedShardCounts[fileURL.path] ?? 0))
+        }
+        shards.sort { $0.date < $1.date }
+
+        let expireBefore = Date().addingTimeInterval(-maxRetention)
+        for shard in shards {
+            let expired = shard.date < expireBefore
+            let overCount = totalEntries > maxEntries
+            let overBytes = totalBytes > maxDiskBytes
+            guard expired || overCount || overBytes else { break }
+            do {
+                try fileManager.removeItem(at: shard.url)
+                archivedShardCounts.removeValue(forKey: shard.url.path)
+                totalEntries -= shard.count
+                totalBytes -= shard.size
+            } catch {
+                // 删除失败则跳过，等下次清理再试
             }
         }
-        
-        // 限制最大条数
-        if encryptedEntries.count > maxEntries {
-            encryptedEntries = Array(encryptedEntries.suffix(maxEntries))
-        }
     }
-    
+
     /// 从 Data 的指定偏移位置读取小端序 UInt32
     private func readUInt32LE(from data: Data, at offset: Int) -> UInt32 {
         guard offset + 4 <= data.count else { return 0 }

@@ -137,11 +137,19 @@ final class SecureLogger {
                     return
                 }
 
-                // 用路径字符串比较（URL 相等性判断在某些情况下不可靠，会误删刚导出的文件）
-                let keepPath = fileURL.path
-                for oldFile in allShardFiles() where oldFile.path != keepPath {
+                // 按“文件名”排除刚导出的文件：iOS 上同一文件的路径可能出现 /var 与 /private/var 两种写法，
+                // 用路径或 URL 比较都可能把刚写好的导出文件自己删掉（曾导致导出只剩一行日志）
+                let keepName = fileURL.lastPathComponent
+                for oldFile in allShardFiles() where oldFile.lastPathComponent != keepName {
                     try? fileManager.removeItem(at: oldFile)
                 }
+                // 清理后再确认导出文件仍然存在且完整，不完整就报错并保留现场
+                guard entryBlobs(in: fileURL).count == entries.count else {
+                    failureMessage = "export file missing right after cleanup"
+                    return
+                }
+                // 诊断指纹：核对写出的条数与清理后剩余分片数（用于定位导出异常）
+                log("export check: wrote \(verified) entries, shards left=\(allShardFiles().count)", module: "Logger")
                 archivedShardCounts.removeAll()
                 memoryEntries.removeAll()   // 已并入导出文件，清空避免下次重复
                 activeShardURL = fileURL
@@ -325,7 +333,7 @@ final class SecureLogger {
         try? activeFileHandle?.close()
         activeFileHandle = nil
         if activeShardEntryCount > 0 {
-            archivedShardCounts[url.path] = activeShardEntryCount
+            archivedShardCounts[url.lastPathComponent] = activeShardEntryCount
         }
         activeShardURL = nil
         activeShardEntryCount = 0
@@ -383,7 +391,7 @@ final class SecureLogger {
     private func loadExistingShardCounts() {
         var counts: [String: Int] = [:]
         for fileURL in allShardFiles() {
-            counts[fileURL.path] = entryBlobs(in: fileURL).count
+            counts[fileURL.lastPathComponent] = entryBlobs(in: fileURL).count
         }
         archivedShardCounts = counts
     }
@@ -402,10 +410,10 @@ final class SecureLogger {
             let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
             let size = values?.fileSize ?? 0
             totalBytes += size
-            if fileURL.path == activeURL.path { continue }
+            if fileURL.lastPathComponent == activeURL.lastPathComponent { continue }
             // 读不到修改时间时保守处理为"刚刚创建"，绝不因为读不到时间就删日志
             let date = values?.contentModificationDate ?? Date()
-            shards.append((fileURL, date, size, archivedShardCounts[fileURL.path] ?? 0))
+            shards.append((fileURL, date, size, archivedShardCounts[fileURL.lastPathComponent] ?? 0))
         }
         shards.sort { $0.date < $1.date }
 
@@ -417,7 +425,7 @@ final class SecureLogger {
             guard expired || overCount || overBytes else { break }
             do {
                 try fileManager.removeItem(at: shard.url)
-                archivedShardCounts.removeValue(forKey: shard.url.path)
+                archivedShardCounts.removeValue(forKey: shard.url.lastPathComponent)
                 totalEntries -= shard.count
                 totalBytes -= shard.size
             } catch {

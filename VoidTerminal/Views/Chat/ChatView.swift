@@ -71,7 +71,7 @@ struct ChatView: View {
                     case .dm(_, let peerName): roomDesc = "dm \(peerName)"
                     case .group(_, let name): roomDesc = "group \(name)"
                     }
-                    SecureLogger.shared.log("enter chat room: \(roomDesc)", module: "UI")
+                    SecureLogger.shared.log("enter chat room: \(roomDesc)", level: .debug, module: "UI")
                     // 打开对话时滚动到最新消息
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         if let last = messages.last {

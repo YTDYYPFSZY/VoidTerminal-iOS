@@ -50,10 +50,10 @@ struct MainTabView: View {
         .onChange(of: selectedTab) { newTab in
             let tabNames = ["消息", "通讯录", "发现", "我的"]
             let name = (0..<tabNames.count).contains(newTab) ? tabNames[newTab] : "未知"
-            SecureLogger.shared.log("tab switched to \(name)", module: "UI")
+            SecureLogger.shared.log("tab switched to \(name)", level: .debug, module: "UI")
         }
         .onAppear {
-            SecureLogger.shared.log("MainTabView onAppear", module: "App")
+            SecureLogger.shared.log("MainTabView onAppear", level: .debug, module: "App")
             // 确保进入主界面后建立WebSocket连接（此时ChatViewModel回调已就绪）
             if let token = appState.token {
                 SecureLogger.shared.log("MainTabView: token found, connecting WebSocket", module: "App")

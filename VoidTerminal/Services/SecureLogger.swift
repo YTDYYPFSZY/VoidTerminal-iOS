@@ -51,6 +51,17 @@ final class SecureLogger {
     /// 已封存分片的条目数（key = 文件路径）
     private var archivedShardCounts: [String: Int] = [:]
 
+    /// 内存黑匣子：最近若干条「详细日志」常驻内存，导出时合并，不占用磁盘配额
+    private var memoryEntries: [(timestamp: Double, blob: Data)] = []
+    /// 内存黑匣子容量
+    private let memoryCapacity = 500
+
+    /// 是否把详细日志（debug 级别，如切前后台、切页面）也写入磁盘
+    var detailedLoggingEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "vt_detailed_logging") }
+        set { UserDefaults.standard.set(newValue, forKey: "vt_detailed_logging") }
+    }
+
     /// 写盘失败次数（用于排查日志系统本身是否在丢数据）
     private(set) var writeFailureCount = 0
     /// 加密失败次数
@@ -122,6 +133,7 @@ final class SecureLogger {
                     try? fileManager.removeItem(at: oldFile)
                 }
                 archivedShardCounts.removeAll()
+                memoryEntries.removeAll()   // 已并入导出文件，清空避免下次重复
                 activeShardURL = fileURL
                 activeShardEntryCount = entries.count
                 activeFileHandle = try? FileHandle(forWritingTo: fileURL)
@@ -148,6 +160,7 @@ final class SecureLogger {
             activeShardURL = nil
             activeShardEntryCount = 0
             archivedShardCounts.removeAll()
+            memoryEntries.removeAll()
             if let files = try? fileManager.contentsOfDirectory(at: logDirectoryURL, includingPropertiesForKeys: nil) {
                 for file in files {
                     try? fileManager.removeItem(at: file)
@@ -185,7 +198,7 @@ final class SecureLogger {
         }
     }
 
-    /// 加密一条日志并追加到活动分片（只追加，不重写已有内容）
+    /// 加密一条日志：详细日志默认只进内存黑匣子，其余落盘；出错时把现场一并转存
     private func appendEntry(_ entry: LogEntry) {
         guard let jsonData = try? JSONEncoder().encode(entry) else {
             encryptFailureCount += 1
@@ -195,6 +208,23 @@ final class SecureLogger {
             encryptFailureCount += 1
             return
         }
+
+        // 详细日志（debug 级别，如切前后台/切页面）：默认只留在内存里，不占用磁盘配额
+        if entry.level == LogLevel.debug.rawValue && !detailedLoggingEnabled {
+            rememberInMemory(timestamp: entry.timestamp, blob: encrypted)
+            return
+        }
+
+        // 出错时先把内存里最近的现场转存到磁盘，避免关键上下文被冲掉
+        if entry.level == LogLevel.error.rawValue {
+            dumpMemoryToDisk()
+        }
+
+        appendBlobToDisk(encrypted)
+    }
+
+    /// 把一条加密日志追加到当前活动分片（只追加，不重写已有内容）
+    private func appendBlobToDisk(_ encrypted: Data) {
         rotateShardIfNeeded()
         guard let handle = activeFileHandle else {
             writeFailureCount += 1
@@ -210,6 +240,23 @@ final class SecureLogger {
         } catch {
             writeFailureCount += 1
         }
+    }
+
+    /// 存进内存黑匣子（超出容量则丢最旧的）
+    private func rememberInMemory(timestamp: Double, blob: Data) {
+        memoryEntries.append((timestamp, blob))
+        if memoryEntries.count > memoryCapacity {
+            memoryEntries.removeFirst(memoryEntries.count - memoryCapacity)
+        }
+    }
+
+    /// 把内存黑匣子里的条目转存到磁盘（转存后清空内存副本，避免导出时重复）
+    private func dumpMemoryToDisk() {
+        guard !memoryEntries.isEmpty else { return }
+        for item in memoryEntries {
+            appendBlobToDisk(item.blob)
+        }
+        memoryEntries.removeAll()
     }
 
     /// 分片写满则封存并换新分片
@@ -305,12 +352,20 @@ final class SecureLogger {
         return blobs
     }
 
-    /// 汇总所有分片里的加密条目（按时间顺序）
-    private func collectAllEntryBlobs() -> [Data] {
+    /// 汇总磁盘上所有分片里的加密条目（按分片时间顺序）
+    private func collectDiskEntryBlobs() -> [Data] {
         var blobs: [Data] = []
         for fileURL in allShardFiles() {
             blobs.append(contentsOf: entryBlobs(in: fileURL))
         }
+        return blobs
+    }
+
+    /// 导出时用：磁盘分片 + 内存黑匣子（未落盘的详细日志）
+    private func collectAllEntryBlobs() -> [Data] {
+        var blobs = collectDiskEntryBlobs()
+        // 内存里的详细日志直接合并到末尾（每条日志自带时间戳，顺序仍可辨）
+        blobs.append(contentsOf: memoryEntries.map { $0.blob })
         return blobs
     }
 

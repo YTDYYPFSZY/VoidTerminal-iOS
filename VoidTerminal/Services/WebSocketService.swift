@@ -55,11 +55,11 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: - Connection
     func connect(token: String) {
-        SecureLogger.shared.log("WebSocket connect called, token length=\(token.count)", module: "WebSocket")
+        SecureLogger.shared.log("WebSocket connect called, token length=\(token.count)", level: .debug, module: "WebSocket")
         isManualDisconnect = false
         reconnectAttempts = 0
         if task != nil { disconnect() }
-        SecureLogger.shared.log("connecting to \(ServerConfig.shared.wsURL)", module: "WebSocket")
+        SecureLogger.shared.log("connecting to \(ServerConfig.shared.wsURL)", level: .debug, module: "WebSocket")
         startConnectionCheck()
         self.token = token
         guard let url = URL(string: ServerConfig.shared.wsURL) else {
@@ -69,7 +69,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         task = session.webSocketTask(with: url)
         task?.resume()
         _isConnected = true
-        SecureLogger.shared.log("WebSocket task resumed, starting receive", module: "WebSocket")
+        SecureLogger.shared.log("WebSocket task resumed, starting receive", level: .debug, module: "WebSocket")
         receive()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.sendAuth()
@@ -274,7 +274,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         case "hello":
             do {
                 let msg = try decoder.decode(HelloMessage.self, from: data)
-                SecureLogger.shared.log("hello decoded successfully", module: "WebSocket")
+                SecureLogger.shared.log("hello decoded successfully", level: .debug, module: "WebSocket")
                 onHello?(msg)
             } catch {
                 SecureLogger.shared.log("hello decode FAILED: \(error)", level: .error, module: "WebSocket")

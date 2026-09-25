@@ -44,7 +44,7 @@ struct ContactsView: View {
                             name: "添加好友",
                             subtitle: nil
                         ) {
-                            SecureLogger.shared.log("open add friend sheet", module: "UI")
+                            SecureLogger.shared.log("open add friend sheet", level: .debug, module: "UI")
                             showAddFriend = true
                         }
 
@@ -55,7 +55,7 @@ struct ContactsView: View {
                             name: "创建群聊",
                             subtitle: nil
                         ) {
-                            SecureLogger.shared.log("open create group sheet", module: "UI")
+                            SecureLogger.shared.log("open create group sheet", level: .debug, module: "UI")
                             showCreateGroup = true
                         }
 
@@ -66,7 +66,7 @@ struct ContactsView: View {
                             name: "搜索群聊",
                             subtitle: nil
                         ) {
-                            SecureLogger.shared.log("open search group sheet", module: "UI")
+                            SecureLogger.shared.log("open search group sheet", level: .debug, module: "UI")
                             showSearchGroup = true
                         }
 

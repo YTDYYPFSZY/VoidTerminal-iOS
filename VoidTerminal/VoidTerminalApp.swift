@@ -28,13 +28,13 @@ struct VoidTerminalApp: App {
                 .onChange(of: scenePhase) { newPhase in
                     switch newPhase {
                     case .active:
-                        SecureLogger.shared.log("app scene phase: active (enter foreground)", module: "App")
+                        SecureLogger.shared.log("app scene phase: active (enter foreground)", level: .debug, module: "App")
                     case .inactive:
-                        SecureLogger.shared.log("app scene phase: inactive", module: "App")
+                        SecureLogger.shared.log("app scene phase: inactive", level: .debug, module: "App")
                     case .background:
-                        SecureLogger.shared.log("app scene phase: background (enter background)", module: "App")
+                        SecureLogger.shared.log("app scene phase: background (enter background)", level: .debug, module: "App")
                     @unknown default:
-                        SecureLogger.shared.log("app scene phase: unknown", module: "App")
+                        SecureLogger.shared.log("app scene phase: unknown", level: .debug, module: "App")
                     }
                 }
         }

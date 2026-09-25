@@ -84,7 +84,7 @@ struct ProfileView: View {
                         VStack(spacing: 10) {
                             if appState.isAdmin || appState.currentUser?.isAdmin == true {
                                 menuButton(title: "⚙ 站长管理", isAdmin: true) {
-                                    SecureLogger.shared.log("open admin view", module: "UI")
+                                    SecureLogger.shared.log("open admin view", level: .debug, module: "UI")
                                     showAdmin = true
                                 }
                             }
@@ -110,31 +110,31 @@ struct ProfileView: View {
                             }
 
                             menuButton(title: "字体大小") {
-                                SecureLogger.shared.log("open font size view", module: "UI")
+                                SecureLogger.shared.log("open font size view", level: .debug, module: "UI")
                                 showFontSize = true
                             }
 
                             menuButton(title: "更改用户名") {
-                                SecureLogger.shared.log("open change username view", module: "UI")
+                                SecureLogger.shared.log("open change username view", level: .debug, module: "UI")
                                 showChangeUsername = true
                             }
 
                             menuButton(title: "更改密码") {
-                                SecureLogger.shared.log("open change password view", module: "UI")
+                                SecureLogger.shared.log("open change password view", level: .debug, module: "UI")
                                 showChangePassword = true
                             }
 
                             menuButton(title: "服务器设置") {
-                                SecureLogger.shared.log("open server config view", module: "UI")
+                                SecureLogger.shared.log("open server config view", level: .debug, module: "UI")
                                 showServerConfig = true
                             }
                             menuButton(title: "📊 运行日志") {
-                                SecureLogger.shared.log("open debug log view", module: "UI")
+                                SecureLogger.shared.log("open debug log view", level: .debug, module: "UI")
                                 showDebugLog = true
                             }
 
                             menuButton(title: "📋 更新日志") {
-                                SecureLogger.shared.log("open changelog view", module: "UI")
+                                SecureLogger.shared.log("open changelog view", level: .debug, module: "UI")
                                 showChangelog = true
                             }
 
@@ -437,6 +437,7 @@ struct LogExportView: View {
     @State private var exportedFileURL: URL?
     @State private var showShareSheet = false
     @State private var logCount = 0
+    @State private var detailedLogging = SecureLogger.shared.detailedLoggingEnabled
     @State private var exportSuccess = false
     
     var body: some View {
@@ -456,9 +457,32 @@ struct LogExportView: View {
                         .font(.vt(size: 16))
                         .foregroundColor(.vtText)
                     
-                    Text("当前记录 \(logCount) 条日志")
+                    Text("当前记录 \(logCount) 条日志（保留最近 7 天 / 最多 20000 条）")
                         .font(.vt(size: 13))
                         .foregroundColor(.vtTextDim)
+
+                    if SecureLogger.shared.writeFailureCount > 0 || SecureLogger.shared.encryptFailureCount > 0 {
+                        Text("写入失败 \(SecureLogger.shared.writeFailureCount) 次 / 加密失败 \(SecureLogger.shared.encryptFailureCount) 次")
+                            .font(.vt(size: 13))
+                            .foregroundColor(Color(hex: "e5484d"))
+                    }
+
+                    Toggle(isOn: $detailedLogging) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("详细日志")
+                                .font(.vt(size: 14))
+                                .foregroundColor(.vtText)
+                            Text("记录切前后台、切换页面等过程日志；关闭时它们只留在内存缓存，不占用磁盘")
+                                .font(.vt(size: 11))
+                                .foregroundColor(.vtTextDim)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color(hex: "07c160")))
+                    .padding(.horizontal, 32)
+                    .padding(.top, 10)
+                    .onChange(of: detailedLogging) { newValue in
+                        SecureLogger.shared.detailedLoggingEnabled = newValue
+                    }
                     
                     if exportSuccess {
                         Text("导出成功，请通过分享面板发送")

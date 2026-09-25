@@ -29,6 +29,7 @@ struct VoidTerminalApp: App {
                     switch newPhase {
                     case .active:
                         SecureLogger.shared.log("app scene phase: active (enter foreground)", level: .debug, module: "App")
+                        WebSocketService.shared.reconnectIfNeeded()
                     case .inactive:
                         SecureLogger.shared.log("app scene phase: inactive", level: .debug, module: "App")
                     case .background:

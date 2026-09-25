@@ -544,7 +544,10 @@ struct ChatView: View {
         // 双层防重复：isSending 锁 + 时间戳防抖（2秒内不允许二次触发）
         let now = Date()
         guard !isSending else { return }
-        guard now.timeIntervalSince(lastSendAttemptTime) >= 2.0 else { return }
+        guard now.timeIntervalSince(lastSendAttemptTime) >= 0.5 else {
+            chatVM.showToast("发送太快了，稍等一下")
+            return
+        }
         lastSendAttemptTime = now
 
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -576,17 +579,17 @@ struct ChatView: View {
                     }
                 }
                 await MainActor.run {
-                    chatVM.sendMessage(currentText, images: uploadedURLs)
+                    if !chatVM.sendMessage(currentText, images: uploadedURLs) { messageText = currentText; draftImages = currentImages }
                     // 图片消息等上传完成后再延迟解锁
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         isSending = false
                     }
                 }
             }
         } else {
-            chatVM.sendMessage(currentText)
+            if !chatVM.sendMessage(currentText) { messageText = currentText; draftImages = currentImages }
             // 纯文本消息延迟解锁，防止快速双击重复发送
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isSending = false
             }
         }

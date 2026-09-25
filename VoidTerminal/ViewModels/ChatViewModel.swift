@@ -411,15 +411,27 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func sendMessage(_ text: String, images: [String] = []) {
-        guard let room = currentRoom, !text.isEmpty || !images.isEmpty else { return }
+    @discardableResult
+    func sendMessage(_ text: String, images: [String] = []) -> Bool {
+        guard let room = currentRoom, !text.isEmpty || !images.isEmpty else {
+            showToast("发送失败：当前不在会话中")
+            SecureLogger.shared.log("send blocked: no active room or empty content", level: .warn, module: "Chat")
+            return false
+        }
 
         // 防重复发送兜底：3秒内相同内容不重复发送
         let now = Int(Date().timeIntervalSince1970)
         let contentHash = "\(text)|\(images.sorted().joined(separator: ","))"
-        if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3 {
-            SecureLogger.shared.log("send blocked by anti-duplicate lock", level: .warn, module: "Chat")
-            return
+        // 连接状态校验：断线时明确提示，避免"看起来发出去了其实没发出去"
+        guard ws.isConnected else {
+            showToast("网络未连接，消息未发送")
+            SecureLogger.shared.log("send blocked: websocket not connected", level: .warn, module: "Chat")
+            return false
+        }
+
+        if contentHash == lastSentContentHash && (now - lastSentTimestamp) < 3 {            SecureLogger.shared.log("send blocked by anti-duplicate lock", level: .warn, module: "Chat")
+            showToast("刚才这条已经发送过了")
+            return false
         }
         lastSentContentHash = contentHash
         lastSentTimestamp = now
@@ -458,6 +470,7 @@ final class ChatViewModel: ObservableObject {
             groupMessages[gid]?.append(tempMsg)
             ws.sendGroup(gid: gid, content: text, images: images)
         }
+        return true
     }
 
     func recallMessage(_ msg: ChatMessage) {

@@ -13,6 +13,8 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     private var reconnectTimer: Timer?
     private var heartbeatTimer: Timer?
     private var connectionCheckTimer: Timer?
+    /// 记住上次使用的 token，便于前台恢复或断线后重连
+    private var lastToken: String?
     private var isManualDisconnect = false
 
     // 回调
@@ -62,6 +64,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         SecureLogger.shared.log("connecting to \(ServerConfig.shared.wsURL)", level: .debug, module: "WebSocket")
         startConnectionCheck()
         self.token = token
+        self.lastToken = token
         guard let url = URL(string: ServerConfig.shared.wsURL) else {
             SecureLogger.shared.log("invalid wsURL", level: .error, module: "WebSocket")
             return
@@ -473,6 +476,15 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
     }
 
     // MARK: - Heartbeat
+    /// 前台恢复/需要时主动重连（不等下一次定时检查）
+    func reconnectIfNeeded() {
+        guard !isManualDisconnect else { return }
+        guard !isConnected, let token = token ?? lastToken else { return }
+        SecureLogger.shared.log("foreground resume: reconnecting", module: "WebSocket")
+        reconnectAttempts = 0
+        connect(token: token)
+    }
+
     private func startHeartbeat() {
         heartbeatTimer?.invalidate()
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) { [weak self] _ in
@@ -480,15 +492,31 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         }
     }
     private func sendPing() {
-        task?.sendPing { error in
-            if let error = error {
-                print("WS ping error: \(error)")
+        task?.sendPing { [weak self] error in
+            guard let error = error else { return }
+            // 心跳失败 = 连接已不可用：主动判死并重连（看门狗）
+            print("WS ping error: \(error)")
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                SecureLogger.shared.log("WS ping failed: \(error.localizedDescription)", level: .warn, module: "WebSocket")
+                self._isConnected = false
+                self.heartbeatTimer?.invalidate()
+                self.heartbeatTimer = nil
+                self.onDisconnect?()
+                self.scheduleReconnect()
             }
         }
     }
     // MARK: - Reconnect
     private func scheduleReconnect() {
-        guard !isManualDisconnect, let token = token else { return }
+        guard !isManualDisconnect else {
+            SecureLogger.shared.log("reconnect skipped: manual disconnect", level: .warn, module: "WebSocket")
+            return
+        }
+        guard let token = token ?? lastToken else {
+            SecureLogger.shared.log("reconnect skipped: token missing", level: .warn, module: "WebSocket")
+            return
+        }
         reconnectAttempts += 1
         let delay = min(Double(reconnectAttempts) * 2, 15)
         SecureLogger.shared.log("reconnect scheduled in \(Int(delay))s (attempt \(reconnectAttempts))", level: .warn, module: "WebSocket")

@@ -31,10 +31,11 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     var gid: String?
 
     var isFromMe: Bool = false
+    var isRecalled: Bool = false   // 已撤回（保留原位，渲染成占位提示）
     var isImageOnly: Bool { content.isEmpty && !(images?.isEmpty ?? true) }
 
     enum CodingKeys: String, CodingKey {
-        case id, from, fromName, fromAvatar, fromRole, fromBot, content, images, time, to, gid
+        case id, from, fromName, fromAvatar, fromRole, fromBot, content, images, time, to, gid, isRecalled
     }
     // 成员初始化器（自定义init(from:)后需手动提供）
     init(id: String, from: String, fromName: String? = nil, fromAvatar: String? = nil,
@@ -73,6 +74,7 @@ struct ChatMessage: Codable, Identifiable, Hashable {
         time = try container.decode(Int.self, forKey: .time)
         to = try? container.decode(String.self, forKey: .to)
         gid = try? container.decode(String.self, forKey: .gid)
+        isRecalled = (try? container.decode(Bool.self, forKey: .isRecalled)) ?? false
     }
 }
 

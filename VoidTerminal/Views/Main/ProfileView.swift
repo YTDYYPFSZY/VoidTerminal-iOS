@@ -551,10 +551,23 @@ struct ChangelogView: View {
 
     private let logs: [VersionLog] = [
         VersionLog(
-            version: "v3.2.2",
-            date: "2026-08-27",
+            version: "v3.3",
+            date: "2026-09-25",
             badge: "最新",
             badgeColor: "07c160",
+            items: [
+                "撤回消息后显示「XX 撤回了一条消息」提示",
+                "修复撤回的消息重启后重新出现",
+                "修复断线后不会自动重连",
+                "修复发送失败没有提示导致的重复发送",
+                "优化消息发送体验，不再出现按钮点了没反应"
+            ]
+        ),
+        VersionLog(
+            version: "v3.2.2",
+            date: "2026-08-27",
+            badge: "",
+            badgeColor: "6b7280",
             items: [
                 "修复朋友圈点赞评论不显示问题",
                 "修复已知问题"

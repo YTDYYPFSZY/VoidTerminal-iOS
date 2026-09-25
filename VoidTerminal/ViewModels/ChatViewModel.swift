@@ -138,20 +138,9 @@ final class ChatViewModel: ObservableObject {
         }
         ws.onRecalled = { [weak self] room, id, to, gid in
             Task { @MainActor in
-                switch room {
-                case "global":
-                    self?.globalMessages.removeAll { $0.id == id }
-                case "dm":
-                    if let to = to, let self = self {
-                        let key = self.dmRoomKey(self.currentUserId, to)
-                        self.dmMessages[key]?.removeAll { $0.id == id }
-                    }
-                case "group":
-                    if let gid = gid {
-                        self?.groupMessages[gid]?.removeAll { $0.id == id }
-                    }
-                default: break
-                }
+                // 撤回不再删除消息，而是原地标记成占位提示（微信式）
+                // 直接按 id 遍历所有会话定位，顺带干掉「私聊用 to 推断 peer」的隐患
+                self?.markRecalled(id: id)
             }
         }
         ws.onError = { [weak self] err in
@@ -482,14 +471,21 @@ final class ChatViewModel: ObservableObject {
             ws.recall(room: "group", id: msg.id, gid: gid)
         }
     }
-    func removeMessageLocally(_ msg: ChatMessage) {
-        globalMessages.removeAll { $0.id == msg.id }
-        for key in dmMessages.keys {
-            dmMessages[key]?.removeAll { $0.id == msg.id }
+    /// 就地标记「已撤回」并落盘（撤回广播 / 本地乐观撤回共用）
+    /// - 不再删除消息，改为保留原位渲染占位提示
+    func markRecalled(id: String) {
+        func apply(_ arr: inout [ChatMessage]) {
+            guard let i = arr.firstIndex(where: { $0.id == id }) else { return }
+            if !arr[i].isRecalled { arr[i].isRecalled = true }
         }
-        for key in groupMessages.keys {
-            groupMessages[key]?.removeAll { $0.id == msg.id }
+        apply(&globalMessages)
+        for key in Array(dmMessages.keys) {
+            if var arr = dmMessages[key] { apply(&arr); dmMessages[key] = arr }
         }
+        for key in Array(groupMessages.keys) {
+            if var arr = groupMessages[key] { apply(&arr); groupMessages[key] = arr }
+        }
+        saveToLocal()
     }
 
     func showToast(_ text: String) {

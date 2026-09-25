@@ -119,7 +119,7 @@ struct ChatView: View {
                         }
                         SecureLogger.shared.log("recall message room=\(roomDesc) id=\(msg.id)", module: "Chat")
                         chatVM.recallMessage(msg)
-                        chatVM.removeMessageLocally(msg)
+                        chatVM.markRecalled(id: msg.id)
                         contextMenuMessage = nil
                     }
                 }
@@ -366,6 +366,7 @@ struct ChatView: View {
         }
         .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: 0.4) {
+            guard !msg.isRecalled else { return }   // 已撤回的消息不再弹出操作菜单
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             contextMenuMessage = msg
         }
@@ -389,16 +390,23 @@ struct ChatView: View {
 
     private func messageBubble(_ msg: ChatMessage, isMe: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if !msg.content.isEmpty {
-                mentionHighlightedText(msg.content, isMe: isMe)
-            }
-            if let images = msg.images, !images.isEmpty {
-                messageImages(images, isMe: isMe)
+            if msg.isRecalled {
+                Text(isMe ? "你撤回了一条消息" : (msg.fromName ?? "对方") + " 撤回了一条消息")
+                    .font(.vt(size: 13))
+                    .foregroundColor(Color.vtText.opacity(0.5))
+            } else {
+                if !msg.content.isEmpty {
+                    mentionHighlightedText(msg.content, isMe: isMe)
+                }
+                if let images = msg.images, !images.isEmpty {
+                    messageImages(images, isMe: isMe)
+                }
             }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
-        .background(isMe ? Color(hex: "07c160") : Color.vtBorder)
+        .background(msg.isRecalled ? Color.vtBorder.opacity(0.6)
+                                   : (isMe ? Color(hex: "07c160") : Color.vtBorder))
         .cornerRadius(10)
     }
 
